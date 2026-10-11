@@ -28,6 +28,9 @@ check('juguete blando: sombreado suave global (sin flatShading)', !js.includes('
 check('juguete blando: pastel + gordito + contorno toon', js.includes('softenToy') && js.includes('addOutlines') && js.includes('BackSide'));
 check('juguete blando: ojos grandes (EYE_BIG)', js.includes('EYE_BIG = 1.45'));
 check('estrellas-premio: 20 fijas, brillo, partículas, +10 pts y reinicio', js.includes('ESTRELLAS-PREMIO') && js.includes('makeBursts') && js.includes('burstAt(') && js.includes('state.points') && js.includes('points:0'));
+check('estrellas: 5 puntas extruidas (Shape 1/0.45) y geometría compartida', js.includes('starShape5') && js.includes('0.45') && js.includes('ExtrudeGeometry') && js.includes('_starGeo'));
+check('estrellas: balanceo ±35° sin giro completo + magnetismo', js.includes('STAR_SWAY = 0.6') && js.includes('magnetismo'));
+check('estrellas: hileras de 5, bonus +20 y do-re-mi-sol', js.includes('HILERAS') && js.includes('rowBonus') && js.includes('+=20') && js.includes('pluck('));
 check('meta con celebración (confeti + fanfarria + rugido)', js.includes('confetti') && js.includes('fanfare') && js.includes('dinoRoar'));
 check('rugidos por especie sincronizados con mandíbula', js.includes('ROAR_VOICE') && js.includes('_roarT') && js.includes('roar('));
 check('rugido gruñido-grave: sierra 60-120Hz + AM 20-40Hz + ruido + paso bajo', js.includes("type='sawtooth'") && js.includes('createBuffer') && js.includes("type='lowpass'") && js.includes('bububu'));

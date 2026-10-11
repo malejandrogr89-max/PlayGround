@@ -813,8 +813,7 @@ class MusicBox {
     o.start(t); o.stop(t+dur+.05); o2.start(t); o2.stop(t+dur+.05);
   }
   /* campanilla discreta con destello */
-  bell(freq, vol=.05, when=0){
-    if(!this.ctx||this.muted) return;
+  bell(freq, vol=.05, when=0){    if(!this.ctx||this.muted) return;
     const t=this.ctx.currentTime+when;
     for(const [m,a] of [[1,1],[2.4,.4],[5.1,.15]]){
       const o=this.ctx.createOscillator(), g=this.ctx.createGain();
@@ -824,6 +823,17 @@ class MusicBox {
       g.gain.exponentialRampToValueAtTime(.001,t+1.1);
       o.connect(g); g.connect(this.musicGain); o.start(t); o.stop(t+1.2);
     }
+  }
+  /* pluck: nota redonda de cuerda pulsada en el bus de EFECTOS (hileras) */
+  pluck(freq, when=0, vol=.2, dur=.45){
+    if(!this.ctx||this.muted) return;
+    const t=this.ctx.currentTime+when;
+    const o=this.ctx.createOscillator(), g=this.ctx.createGain();
+    o.type='sine'; o.frequency.value=freq;
+    g.gain.setValueAtTime(.001,t);
+    g.gain.exponentialRampToValueAtTime(vol,t+.015);
+    g.gain.exponentialRampToValueAtTime(.001,t+dur);
+    o.connect(g); g.connect(this.sfxGain); o.start(t); o.stop(t+dur+.05);
   }
   startMusic(){
     this.ensure(); if(!this.ctx||this.playing) return; this.playing=true;
@@ -1187,19 +1197,47 @@ export function spawnEntities(scene, LEN){
       e.userData={taken:false}; scene.add(e); eggs.push(e);
     }
   }
-  // ESTRELLAS-PREMIO: exactamente 20 por circuito, en la trazada, reparto uniforme
+  // ESTRELLAS-PREMIO: 20 por circuito en 4 HILERAS de 5 (separación ~6 m)
+  // siguiendo la trazada + primera hilera cerca del inicio. Geometría y
+  // materiales COMPARTIDOS (una sola estrella clásica de 5 puntas).
   _dotTex=_dotTex||dotTexture();
-  for(let i=0;i<20;i++){
-    const s=new THREE.Group();
-    const z=-70-i*(LEN-150)/19, x=Math.sin(i*1.7)*4.2;
-    s.position.set(x,1.4,z);
-    const star=mesh(new THREE.OctahedronGeometry(.62,0), M(0xffd43b,{emissive:0xffaa00,emissiveIntensity:.75,roughness:.25}), 0,0,0, 0,0,0, 1,1.3,1);
-    s.add(star);
-    const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:_dotTex,color:0xffe27a,transparent:true,opacity:.85,depthWrite:false,blending:THREE.AdditiveBlending}));
-    glow.scale.set(2.6,2.6,1); s.add(glow);
-    s.userData={taken:false,core:star,glow,ph:i*.7}; scene.add(s); stars.push(s);
+  if(!_starGeo) _starGeo = starShape5();
+  if(!_starMat) _starMat = M(0xffc93b,{emissive:0xcc7a00,emissiveIntensity:.5,roughness:.3});
+  if(!_glowMat) _glowMat = new THREE.SpriteMaterial({map:_dotTex,color:0xffe27a,transparent:true,opacity:.85,depthWrite:false,blending:THREE.AdditiveBlending});
+  starRows = [];
+  for(let r=0;r<4;r++){
+    const rowZ = -50 - r*(LEN-160)/3, row = [];
+    for(let j=0;j<5;j++){
+      const s=new THREE.Group();
+      const z=rowZ-j*6, x=Math.sin((r*5+j)*1.7)*4.2;
+      // arco elevado en la hilera 2 (salto): sube hasta y≈2.8 en el centro
+      const y = r===1 ? 1.4+Math.sin(j/4*Math.PI)*1.4 : 1.4;
+      s.position.set(x,y,z);
+      const star=new THREE.Mesh(_starGeo,_starMat);
+      star.scale.setScalar(1.1); star.castShadow=true; s.add(star);
+      const glow=new THREE.Sprite(_glowMat);
+      glow.scale.set(2.6,2.6,1); s.add(glow);
+      s.userData={taken:false,core:star,glow,ph:(r*5+j)*.7,rowIdx:r,baseY:y}; scene.add(s); stars.push(s); row.push(s);
+    }
+    starRows.push(row);
   }
   return { obstacles, eggs, stars };
+}
+/* estrella clásica de 5 puntas: exterior 1, interior 0.45, punta arriba,
+   extruida con poco grosor y bisel pequeño redondeado */
+let _starGeo=null, _starMat=null, _glowMat=null, starRows=[];
+const STAR_SWAY = 0.6; // balanceo ±35° (nunca de canto)
+function starShape5(){
+  const shape=new THREE.Shape();
+  for(let i=0;i<10;i++){
+    const r=i%2===0?1:0.45, a=Math.PI/2+i*Math.PI/5;
+    const x=Math.cos(a)*r, y=Math.sin(a)*r;
+    if(i===0) shape.moveTo(x,y); else shape.lineTo(x,y);
+  }
+  shape.closePath();
+  const g=new THREE.ExtrudeGeometry(shape,{depth:.28,bevelEnabled:true,bevelThickness:.08,bevelSize:.08,bevelSegments:2,steps:1});
+  g.center();
+  return g;
 }
 /* destellos al recoger estrellas (pool reciclado de motas doradas) */
 let starBursts=null;
@@ -1309,7 +1347,7 @@ function startRace(){
     scene.add(r.rig);
     rivals.push({ ...r, z:4-i*4, x:i===0?-3.4:3.4, spd:13.5+i*0.9, wob:Math.random()*9 });
   }
-  Object.assign(state,{speed:0,x:0,y:0,vy:0,z:10,targetX:0,eggs:0,stars:0,points:0,hits:0,time:0,slowT:0,invT:0,finished:false});
+  Object.assign(state,{speed:0,x:0,y:0,vy:0,z:10,targetX:0,eggs:0,stars:0,points:0,rowBonus:{},hits:0,time:0,slowT:0,invT:0,finished:false});
   setHUD(true); updateHUD(track);
   // cuenta atrás 3-2-1-¡YA!
   state.mode='countdown'; show('screen-countdown');
@@ -1562,14 +1600,28 @@ function loop(){
     }
     for(const s of ents.stars){
       if(s.userData.taken) continue;
-      s.rotation.y+=dt*3; s.position.y=1.4+Math.sin(elapsed*3+s.userData.ph)*.25;
-      s.userData.glow.material.opacity=.65+Math.sin(elapsed*5+s.userData.ph)*.25;
+      // balanceo suave ±35° + cabeceo (nunca de canto) + flotación
+      s.rotation.y=Math.sin(elapsed*2+s.userData.ph)*STAR_SWAY;
+      s.rotation.x=Math.sin(elapsed*1.7+s.userData.ph)*.15;
+      s.position.y=s.userData.baseY+Math.sin(elapsed*3+s.userData.ph)*.25;
+      const gs=2.6+Math.sin(elapsed*5+s.userData.ph)*.5; // brillo pulsante por escala
+      s.userData.glow.scale.set(gs,gs,1);
       const dz=s.position.z-state.z, dx=s.position.x-state.x, dy=(s.position.y)-(state.y+1.2);
-      if(Math.abs(dz)<2.2&&Math.abs(dx)<2.2&&Math.abs(dy)<2.6){
+      // ligera atracción al kart cuando pasa cerca (magnetismo suave)
+      if(!s.userData.taken&&dz<8&&dz>-2) s.position.x += (state.x-s.position.x)*Math.min(1,dt*2);
+      if(Math.abs(dz)<2.5&&Math.abs(dx)<2.5&&Math.abs(dy)<3){
         s.userData.taken=true; s.visible=false; state.stars++; state.points=(state.points||0)+10;
         music.star(); music.bell(1568,.06); dinoRoar(player,.7);
         burstAt(s.position.x,s.position.y,s.position.z);
         toast('⭐ ¡Estrella! +10');
+        // HILERA completa: +20 de bonus, do-re-mi-sol ascendente y destello
+        const row=starRows[s.userData.rowIdx]||[];
+        if(row.length&&row.every(o=>o.userData.taken)&&!state.rowBonus[s.userData.rowIdx]){
+          state.rowBonus[s.userData.rowIdx]=true; state.points+=20;
+          [523,587,659,784].forEach((f,i)=>music.pluck(f,i*.09,.22));
+          burstAt(s.position.x,s.position.y,s.position.z,28);
+          toast('🌟 ¡Hilera completa! +20');
+        }
       }
     }
     updateHUD();
