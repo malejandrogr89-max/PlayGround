@@ -862,10 +862,19 @@ export const Input = {
       this.keys[e.code]=true; this.readKeys();
       if(e.code==='Space'){ this.jumpQ=true; }
       if(e.code==='Escape'||e.code==='KeyP'){ this.pauseQ=true; }
+      // en menús el teclado navega igual que el mando
+      if(['menu','dino','track','paused','finished','album'].includes(state.mode)){
+        if(e.code==='ArrowLeft') this.menuQ.push('left');
+        if(e.code==='ArrowRight') this.menuQ.push('right');
+        if(e.code==='ArrowUp') this.menuQ.push('up');
+        if(e.code==='ArrowDown') this.menuQ.push('down');
+        if(e.code==='Enter') this.menuQ.push('ok');
+      }
     });
     addEventListener('keyup',e=>{ this.keys[e.code]=false; this.readKeys(); });
     addEventListener('gamepadconnected',e=>{ this.padSeen=true; this.padName=e.gamepad.id||'Mando'; this.padUpdate(); });
-    addEventListener('gamepaddisconnected',()=>{ this.padUpdate(); });
+    addEventListener('gamepaddisconnected',()=>{ this.padSeen=false; this.padUpdate();
+      if(state.mode==='racing'){ state.padLost=true; pauseGame(); showPadLost(); } });
     const b=(id,down,up)=>{ const el=document.getElementById(id);
       el.addEventListener('pointerdown',ev=>{ev.preventDefault();down();});
       el.addEventListener('pointerup',()=>up&&up()); el.addEventListener('pointerleave',()=>up&&up()); };
@@ -880,36 +889,56 @@ export const Input = {
     this.brake = !!(this.keys.ArrowDown||this.keys.KeyS);
   },
   poll(){
-    // gamepad Xbox: stick izquierdo/cruceta -> moverse, A -> salto, Start -> pausa
-    // (mapeo completo Elite en tarea 3: aquí lectura básica + gatillos)
+    // Mando Xbox Elite, mapeo "standard": stick izq (eje 0) girar, A(0) saltar/OK,
+    // B(1) volver, RT(7)/LT(6) analógicos acelerar/frenar, cruceta menús, Start(9) pausa.
+    // Palas traseras y botones no estándar: NO se usan.
     let gx=0, gjump=false, gpause=false, name='', gas=false, brake=false, nonStd=false;
+    let mL=false,mR=false,mU=false,mD=false,mOK=false,mBack=false,anyBtn=false;
     try{
       const gps = navigator.getGamepads?navigator.getGamepads():[];
       for(const gp of gps){ if(!gp||!gp.connected) continue;
         name=gp.id||'Mando'; if(gp.mapping&&gp.mapping!=='standard') nonStd=true;
         const ax = gp.axes[0]||0; if(Math.abs(ax)>0.15) gx=ax;
-        if(gp.buttons[14]?.pressed) gx=-1; if(gp.buttons[15]?.pressed) gx=1;
-        if(gp.buttons[0]?.pressed) gjump=true;
-        if(gp.buttons[9]?.pressed) gpause=true;
+        const B=i=>!!(gp.buttons[i]?.pressed);
+        if(B(14)) gx=-1; if(B(15)) gx=1;
+        if(B(0)) gjump=true;
+        if(B(9)) gpause=true;
         if((gp.buttons[7]?.value||0)>0.1) gas=true;   // RT = acelerar
         if((gp.buttons[6]?.value||0)>0.1) brake=true; // LT = frenar
+        mL=B(14)||ax<-0.5; mR=B(15)||ax>0.5; mU=B(12); mD=B(13); mOK=B(0); mBack=B(1);
+        for(let i=0;i<Math.min(17,gp.buttons.length);i++){ if(B(i)){ anyBtn=true; break; } }
+        this._gpRef=gp;
         break;
       }
     }catch{}
     this.axis=gx; this.padGas=gas||this.gas; this.padBrake=brake||this.brake; this.nonStd=nonStd;
     if(name!==this.padName||(!this.padSeen&&name)){ this.padSeen=!!name; this.padName=name; this.padUpdate(); }
+    if(anyBtn&&!this._anySeen){ this._anySeen=true; music.ensure(); toast('🎮 ¡Mando listo!'); }
     // combinar sin pisar teclado: recalcula (zona muerta ~0.15)
     const kL=!!(this.keys.ArrowLeft||this.keys.KeyA), kR=!!(this.keys.ArrowRight||this.keys.KeyD);
     this.left = kL||gx<-0.15; this.right = kR||gx>0.15;
     // flancos de botones del mando
     if(gjump&&!this._gj){ this.jumpQ=true; } this._gj=gjump;
     if(gpause&&!this._gp){ this.pauseQ=true; } this._gp=gpause;
-    return {move:(this.right?1:0)-(this.left?1:0)+(Math.abs(gx)>0.25?gx*0.0:0)};
+    const edge=(v,k)=>{ const e=v&&!this[k]; this[k]=v; return e; };
+    if(edge(mL,'_mL')) this.menuQ.push('left');
+    if(edge(mR,'_mR')) this.menuQ.push('right');
+    if(edge(mU,'_mU')) this.menuQ.push('up');
+    if(edge(mD,'_mD')) this.menuQ.push('down');
+    if(edge(mOK,'_mOK')) this.menuQ.push('ok');
+    if(edge(mBack,'_mB')) this.menuQ.push('back');
+    // reconexión: si se perdió el mando y hay botón, reanuda
+    if(anyBtn&&!this._anyBtn){ if(state.padLost){ state.padLost=false; hidePadLost(); resumeGame(); } }
+    this._anyBtn=anyBtn;
+    return {move:(this.right?1:0)-(this.left?1:0)+(Math.abs(gx)>0.15?gx*0.0:0)};
   },
+  menuQ:[],
+  takeMenu(){ const q=this.menuQ; this.menuQ=[]; return q; },
   padUpdate(){
     const el=document.getElementById('pad-status'); if(!el) return;
     const gps = navigator.getGamepads?Array.from(navigator.getGamepads()).filter(g=>g&&g.connected):[];
     if(gps.length){ el.classList.add('ok'); el.innerHTML=`🎮 ¡Mando conectado! <b>${String(gps[0].id).slice(0,40)}</b><br>Stick/cruceta = moverte · A = saltar · Start = pausa`; }
+    if(this.nonStd){ el.classList.remove('ok'); el.innerHTML=`⚠️ Mando no estándar: mejor usa el teclado<br>⌨️ Flechas + espacio`; }
   },
   takeJump(){ const j=this.jumpQ; this.jumpQ=false; return j; },
   takePause(){ const p=this.pauseQ; this.pauseQ=false; return p; },
@@ -1562,7 +1591,37 @@ function toast(msg, ms=1600){
   const t=$('toast'); t.textContent=msg; t.classList.remove('hidden');
   clearTimeout(t._h); t._h=setTimeout(()=>t.classList.add('hidden'),ms);
 }
-function show(id){ ['screen-menu','screen-dino','screen-track','screen-pause','screen-finish','screen-countdown'].forEach(s=>$(s).classList.add('hidden')); if(id) $(id).classList.remove('hidden'); }
+function show(id){ ['screen-menu','screen-dino','screen-track','screen-pause','screen-finish','screen-countdown','screen-album'].forEach(s=>{ const el=$(s); if(el) el.classList.add('hidden'); }); if(id) $(id).classList.remove('hidden'); MenuNav.config(id); }
+/* navegación de menús con mando o teclado: cruceta/stick + A, B para volver.
+   Selección muy grande y resaltada (iconos, sin leer). */
+const MenuNav={items:[],idx:0,cols:1,
+  config(id){
+    this.items=[]; this.idx=0; this.cols=1;
+    const q=s=>Array.from(document.querySelectorAll(s));
+    if(id==='screen-menu'){ this.items=q('#screen-menu .big-btn'); }
+    else if(id==='screen-dino'){ this.items=[...q('#dino-grid .dino-card'),...q('#kart-row .kart-btn'),...q('#help-row .kart-btn'),$('btn-back-menu'),$('btn-to-track')].filter(Boolean); this.cols=2; }
+    else if(id==='screen-track'){ this.items=[...q('#track-grid .track-card'),$('btn-back-dino'),$('btn-race')].filter(Boolean); this.cols=2; }
+    else if(id==='screen-pause'){ this.items=[$('btn-resume'),$('btn-restart'),$('btn-quit')].filter(Boolean); }
+    else if(id==='screen-finish'){ this.items=[$('btn-again'),$('btn-change')].filter(Boolean); }
+    else if(id==='screen-album'){ this.items=[...q('#album-grid .album-card'),...q('#album-colors .kart-btn'),$('btn-album-back')].filter(Boolean); this.cols=3; }
+    this.paint();
+  },
+  move(d){ if(!this.items.length) return; this.idx=(this.idx+d+this.items.length)%this.items.length; this.paint(); music.ensure(); music.click(); },
+  vmove(d){ if(!this.items.length) return; this.idx=(this.idx+d*this.cols+this.items.length)%this.items.length; this.paint(); music.ensure(); music.click(); },
+  paint(){ document.querySelectorAll('.pad-focus').forEach(e=>e.classList.remove('pad-focus'));
+    const el=this.items[this.idx]; if(el){ el.classList.add('pad-focus'); try{el.scrollIntoView({block:'nearest'});}catch{} } },
+  ok(){ const el=this.items[this.idx]; if(el) el.click(); },
+  back(){ const b=document.querySelector('.screen:not(.hidden) .big-btn.gray'); if(b) b.click(); },
+};
+function applyMenuInput(){
+  for(const e of Input.takeMenu()){
+    if(e==='left') MenuNav.move(-1); else if(e==='right') MenuNav.move(1);
+    else if(e==='up') MenuNav.vmove(-1); else if(e==='down') MenuNav.vmove(1);
+    else if(e==='ok') MenuNav.ok(); else if(e==='back') MenuNav.back();
+  }
+}
+function showPadLost(){ const el=$('pad-lost'); if(el) el.classList.remove('hidden'); }
+function hidePadLost(){ const el=$('pad-lost'); if(el) el.classList.add('hidden'); }
 function setHUD(v){ $('hud').classList.toggle('hidden',!v); }
 
 function clearScene(){
@@ -1806,6 +1865,7 @@ function loop(){
     if(state.mode==='racing') pauseGame();
     else if(state.mode==='paused') resumeGame();
   }
+  if(['menu','dino','track','paused','finished','album'].includes(state.mode)) applyMenuInput();
   // nubes siempre
   if(world){ world.clouds.forEach((c,i)=>{ c.position.x += dt*(.4+i*.05); if(c.position.x>45)c.position.x=-45; });
     world.meta?.userData.flags?.forEach((f,i)=>{ f.rotation.y = Math.sin(elapsed*6+i*2)*.5; }); }

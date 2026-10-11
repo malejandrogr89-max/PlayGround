@@ -21,7 +21,7 @@ check('cámara alta solo para el braquiosaurio', js.includes("==='braqui'?3.0:1.
 check('constructor buildTiburon + kart marino + voz propia', js.includes('function buildTiburon') && js.includes('marine') && js.includes('tiburon:{f:'));
 check('circuitos 2000-2500m con hitos 50/90%', (()=>{ const m=js.match(/len:(2\d{3})/g)||[]; const lens=m.map(x=>+x.slice(4)); return lens.length===4 && lens.every(l=>l>=2000&&l<=2500); })() && js.includes('ms50') && js.includes('ms90'));
 check('4 circuitos en TRACKS', (js.match(/id:'(jungla|desierto|valle|volcan)'/g) || []).length === 4);
-check('mando Xbox (Gamepad API: stick/cruceta/A/Start)', js.includes('getGamepads') && js.includes('buttons[14]') && js.includes('buttons[15]') && js.includes('buttons[0]') && js.includes('buttons[9]'));
+check('mando Xbox (Gamepad API: stick/cruceta/A/Start)', js.includes('getGamepads') && js.includes('buttons[14]') && js.includes('buttons[15]') && js.includes('buttons[0]') && (js.includes('buttons[9]')||js.includes('B(9)')));
 check('teclado (flechas/espacio/escape)', js.includes('ArrowLeft') && js.includes('ArrowRight') && js.includes("code==='Space'") && js.includes("code==='Escape'"));
 check('kart con 4 ruedas que giran', js.includes('kartWheels') || (js.includes('wheels') && js.includes('tire.rotation')));
 check('estrellas-premio: 20 fijas, brillo, partículas, +10 pts y reinicio', js.includes('ESTRELLAS-PREMIO') && js.includes('makeBursts') && js.includes('burstAt(') && js.includes('state.points') && js.includes('points:0'));
@@ -47,6 +47,7 @@ check('posición 1.º-5.º en HUD y podio en meta', html.includes('hud-pos') && 
 check('3 karts seleccionables con mismo manejo', js.includes("'rocket'") && html.includes('kart-row') && js.includes("kart:'classic'"));
 check('público: bebés instanciados fuera del asfalto, sin colisión, con yuju', js.includes('fx.crowd') && js.includes('rand(10.5,14)') && js.includes('setCrowdPose') && js.includes('cheer()'));
 check('niveles de ayuda Peque/Normal/Mayor guardados', js.includes('HELP_LEVELS') && js.includes("dr3d_help") && html.includes('help-row') && js.includes('loadHelp'));
+check('mando Elite: mapeo standard, B, menús, desconexión', js.includes("mapping!=='standard'") && js.includes('MenuNav') && js.includes('padLost') && html.includes('pad-lost') && js.includes('pad-focus'));
 check('sin llamadas a add() con no-objetos', !js.includes('add?.(0)'));
 
 if (process.argv.includes('--browser')) {
