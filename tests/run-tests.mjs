@@ -12,9 +12,11 @@ catch { check('game.js sintaxis ESM válida', false); }
 
 const js = readFileSync('index.html', 'utf8').length > 0 ? readFileSync('game.js', 'utf8') : '';
 const html = readFileSync('index.html', 'utf8');
-const builders = ['buildTrex', 'buildBraqui', 'buildTrice', 'buildVelo', 'buildStego', 'buildAnky', 'buildPara', 'buildPtera'];
+const builders = ['buildTrex', 'buildBraqui', 'buildTrice', 'buildVelo', 'buildStego', 'buildAnky', 'buildPara', 'buildPtera', 'buildTiburon'];
 for (const b of builders) check('constructor ' + b, js.includes('function ' + b));
 check('8 dinosaurios en DINOS (+tiburón como 9º personaje)', (js.match(/id:'(trex|braqui|trice|velo|stego|anky|para|ptera)'/g) || []).length === 8 && js.includes("id:'tiburon'"));
+check('braquiosaurio: cuello de 11 segmentos con retardo de fase', js.includes('neckSegs') && js.includes('SEG = 11') && js.includes('i*.35'));
+check('cámara alta solo para el braquiosaurio', js.includes("==='braqui'?2.4:1.5"));
 check('constructor buildTiburon + kart marino + voz propia', js.includes('function buildTiburon') && js.includes('marine') && js.includes('tiburon:{f:'));
 check('4 circuitos en TRACKS', (js.match(/id:'(jungla|desierto|valle|volcan)'/g) || []).length === 4);
 check('mando Xbox (Gamepad API: stick/cruceta/A/Start)', js.includes('getGamepads') && js.includes('buttons[14]') && js.includes('buttons[15]') && js.includes('buttons[0]') && js.includes('buttons[9]'));

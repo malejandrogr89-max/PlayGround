@@ -144,9 +144,8 @@ function detailDino(id, g, P, d){
     backSpikes([-.1,.25,.6,.95],1.62,.075);
     for(let i=0;i<3;i++) add(mesh(SPH(8,6), spotM, (i-1)*.3,1.35,.9+i*.25, 0,0,0, .09,.09,.09));
   } else if(id==='braqui'){
-    // manchas del lomo y cuello, uñas en pies anchos, cresta suave del lomo
+    // manchas del lomo voluminoso, uñas en pies anchos, cresta suave del lomo
     for(let i=0;i<5;i++) add(mesh(SPH(8,6), spotM, (i%2? .42:-.42),1.15+i*.1,.9-i*.35, 0,0,0, .17,.14,.17));
-    for(let i=0;i<3;i++) add(mesh(SPH(8,6), spotM, (i%2? .2:-.2),2.2+i*.6,-.95+i*.08, 0,0,0, .12,.1,.12));
     for(const s of [-1,1]){ claws(s*.52,.14,.95-.28,3); claws(s*.52,.14,-.15-.28,3); }
     backSpikes([.2,.5,.8],1.68,.06);
   } else if(id==='trice'){
@@ -255,25 +254,27 @@ function buildBraqui(d){
   tail.add(new THREE.Mesh(new THREE.TubeGeometry(tailCurve, 12, .26, 10),
     skin.clone()));
   tail.children[0].castShadow=true;
-  // CUELLO espectacular: tubo continuo, muy largo, alto y curvado en S
-  const neckCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0,1.35,-.35), new THREE.Vector3(0,1.9,-.75),
-    new THREE.Vector3(0,2.6,-1.0), new THREE.Vector3(0,3.3,-1.05),
-    new THREE.Vector3(0,3.9,-.95), new THREE.Vector3(0,4.35,-.8),
-  ]);
-  const neckPivot = new THREE.Group(); neckPivot.position.set(0,0,0); g.add(neckPivot);
-  const neckMesh = new THREE.Mesh(new THREE.TubeGeometry(neckCurve, 20, .30, 12), skin.clone());
-  neckMesh.castShadow=true; neckMesh.receiveShadow=true; neckPivot.add(neckMesh);
-  // papada bajo el cuello
-  const dewCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0,1.15,-.5), new THREE.Vector3(0,1.7,-.95),
-    new THREE.Vector3(0,2.4,-1.2), new THREE.Vector3(0,3.0,-1.25),
-  ]);
-  const dew = new THREE.Mesh(new THREE.TubeGeometry(dewCurve, 12, .13, 8), bellyM.clone());
-  dew.castShadow=true; neckPivot.add(dew);
+  // CUELLO espectacular: 11 segmentos continuos en curva S, con retardo de fase
+  const neckPivot = new THREE.Group(); neckPivot.position.set(0,1.35,-.35); g.add(neckPivot);
+  const SEG = 11, SGL = .5; // longitud total 5.5 (≥2.5× el torso de ~2.1)
+  const tilts = [-.18,-.14,-.1,-.06,-.02,.02,.04,.05,.05,.04,.03]; // S suave, casi vertical
+  P.neckSegs = [];
+  let parent = neckPivot;
+  for(let i=0;i<SEG;i++){
+    const piv = new THREE.Group();
+    if(i>0) piv.position.set(0,SGL,0);
+    piv.rotation.x = tilts[i];
+    parent.add(piv);
+    const r = .34 - (i/SEG)*.19; // .34 → .15
+    const seg = mesh(SPH(12,10), skin, 0,SGL/2,0, 0,0,0, r,SGL*.62,r);
+    piv.add(seg);
+    if(i%3===1) piv.add(mesh(SPH(8,6), M(d.belly), r*.7,SGL*.5,r*.35, 0,0,0, .1,.14,.1)); // garganta clara
+    P.neckSegs.push({pivot:piv, base:tilts[i]});
+    parent = piv;
+  }
   P.neck = neckPivot;
-  // cabeza PEQUEÑA en lo alto, con hocico redondo y narinas arriba
-  const head = new THREE.Group(); head.position.set(0,4.42,-.78); g.add(head); P.headG = head;
+  // cabeza PEQUEÑA en lo alto, hija del último segmento (hereda el retardo)
+  const head = new THREE.Group(); head.position.set(0,SGL+.05,0); parent.add(head); P.headG = head;
   head.add(mesh(SPH(), skin, 0,0,0, 0,0,0, .26,.24,.32));
   head.add(mesh(SPH(), bellyM, 0,-.1,-.24, 0,0,0, .17,.13,.2)); // hocico
   for(const s of [-1,1]){
@@ -1342,10 +1343,13 @@ function animDino(p, t, dt, extra={}){
   if(id==='trex'){ // mordisquitos + balanceo de cabezota
     if(P.jaw&&!roar) P.jaw.rotation.x = jawBase + Math.max(0,Math.sin(t*5.2))*.18;
     if(P.head) P.head.rotation.z = Math.sin(t*1.2)*.08;
-  } else if(id==='braqui'){ // cuello alto que se mece + cabeza que mira curiosa
-    if(P.neck){ P.neck.rotation.z = Math.sin(t*.9+P._ph)*.035 + steer*-.05; P.neck.rotation.x = Math.sin(t*.7)*.02 + air*-.06; }
+  } else if(id==='braqui'){ // cuello alto por segmentos con retardo + cabeza curiosa
+    if(P.neckSegs) P.neckSegs.forEach((sg,i)=>{
+      sg.pivot.rotation.x = sg.base + Math.sin(t*.9-i*.35)*.035 + air*-.025;
+      sg.pivot.rotation.z = Math.sin(t*.7-i*.3)*.022 + steer*-.022;
+    });
     if(P.headG){ P.headG.rotation.y = Math.sin(t*.8+P._ph)*.35; P.headG.rotation.z = Math.sin(t*1.1)*.1;
-      P.headG.position.y = 4.42+Math.sin(t*2)*.07+headUp*.35; P.headG.position.x = Math.sin(t*.8+P._ph)*.12; }
+      P.headG.rotation.x = -headUp*.7 + Math.sin(t*2)*.06; }
     if(P.tail) P.tail.rotation.y = Math.sin(t*2.2)*.2;
   } else if(id==='trice'){ // cabezazos juguetones de lado a lado
     if(P.head){ P.head.rotation.z = Math.sin(t*2.4)*.12; P.head.position.y = 1.25+Math.abs(Math.sin(t*3.1))*.05; }
@@ -1493,7 +1497,9 @@ function loop(){
     if(Math.abs(camera.fov-targetFov)>.05){ camera.fov += (targetFov-camera.fov)*Math.min(1,dt*2); camera.updateProjectionMatrix(); }
     const cxp = state.x*.55, cyp = 4.7+state.y*.35, czp = state.z+9.8;
     camera.position.lerp(new THREE.Vector3(cxp,cyp,czp), Math.min(1,dt*5));
-    camera.lookAt(state.x*.8, 1.5+state.y*.3, state.z-7);
+    // al braquiosaurio se le encuadra más alto para no tapar cuello ni cabeza
+    const lookY = (player.def.id==='braqui'?2.4:1.5)+state.y*.3;
+    camera.lookAt(state.x*.8, lookY, state.z-7);
     // sol sigue al jugador para sombras estables
     scene.children.forEach(o=>{ if(o.isDirectionalLight&&o.castShadow){ o.position.set(state.x+18,32,state.z+12); o.target.position.set(state.x,0,state.z-10); o.target.updateMatrixWorld(); }});
     // meta
@@ -1655,8 +1661,10 @@ function wireUI(){
         player=makePlayer(state.dinoId,di); player.rig.position.set(-8,0.3,-2.3); scene.add(player.rig);
         dinoRoar(player,.3);
       }
-      camera.position.lerp(new THREE.Vector3(Math.sin(elapsed*.3)*.6-2.6,3.2,3.6),.03);
-      camera.lookAt(-4.6,1.5,-3.2);
+      // al braquiosaurio se le encuadra más alto también en el menú
+      const tallM = player.def.id==='braqui';
+      camera.position.lerp(new THREE.Vector3(tallM?-2.6:Math.sin(elapsed*.3)*.6-2.6,tallM?4.2:3.2,3.6),.03);
+      camera.lookAt(-4.2,tallM?3.3:1.5,-3.2);
     }
     requestAnimationFrame(menuAnim);
   };
