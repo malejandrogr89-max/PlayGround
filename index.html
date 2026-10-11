@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DINO RACE 3D — Carreras Arcade Infantil</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦖</text></svg>">
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<div id="game-root">
+  <canvas id="game-canvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div class="hud-left">
+      <div class="hud-pill" id="hud-dino">🦖 T. Rex</div>
+      <div class="hud-pill" id="hud-track">🌴 Jungla</div>
+    </div>
+    <div class="hud-center">
+      <div id="progress-wrap"><div id="progress-bar"></div><div id="progress-flag">🏁</div></div>
+      <div id="hud-dist">0 m</div>
+    </div>
+    <div class="hud-right">
+      <div class="hud-pill egg">🥚 <span id="hud-eggs">0</span></div>
+      <div class="hud-pill star">⭐ <span id="hud-stars">0</span></div>
+      <button id="btn-mute" class="icon-btn" title="Música on/off">🔊</button>
+      <button id="btn-pause" class="icon-btn" title="Pausa (Esc / Start)">⏸️</button>
+    </div>
+  </div>
+  <div id="touch-controls">
+    <button id="tc-left">◀️</button>
+    <button id="tc-jump">⬆️ ¡SALTA!</button>
+    <button id="tc-right">▶️</button>
+  </div>
+  <div id="toast" class="hidden"></div>
+
+  <!-- MAIN MENU -->
+  <div id="screen-menu" class="screen">
+    <div class="card title-card">
+      <div class="logo-row"><span class="logo-dino">🦖</span><span class="logo-dino">🏎️</span><span class="logo-dino">🦕</span></div>
+      <h1>DINO RACE <span>3D</span></h1>
+      <p class="subtitle">¡Carreras de dinosaurios para peques de 4 años!</p>
+      <div class="menu-buttons">
+        <button id="btn-start" class="big-btn green">▶️ ¡JUGAR!</button>
+        <button id="btn-help" class="big-btn blue">❓ ¿Cómo se juega?</button>
+      </div>
+      <div id="pad-status" class="pad-status">🎮 Conecta tu mando Xbox y pulsa cualquier botón…<br>⌨️ También puedes jugar con flechas + espacio</div>
+      <div class="audio-opts">
+        <label>🎵 Música <input id="vol-music" type="range" min="0" max="100" value="70"></label>
+        <label>🦖 Efectos y rugidos <input id="vol-sfx" type="range" min="0" max="100" value="90"></label>
+      </div>
+      <div id="help-panel" class="hidden">
+        <h3>🎮 Controles</h3>
+        <ul>
+          <li><b>Mando Xbox:</b> stick izquierdo o cruceta ⬅️➡️ para moverte · <b>A</b> para saltar · <b>Start</b> para pausa</li>
+          <li><b>Teclado:</b> ◀️ ▶️ o A/D para moverte · <b>Espacio</b> para saltar · <b>Esc / P</b> para pausa</li>
+          <li>🥚 ¡Atrapa huevos! ⭐ ¡Atrapa estrellas! 🪨 ¡Esquiva rocas y troncos saltando!</li>
+          <li>🏁 ¡Llega a la meta! No pasa nada si chocas: ¡lo importante es divertirse!</li>
+        </ul>
+      </div>
+      <p class="credit">8 dinosaurios · 4 circuitos · música alegre · sin castigos 🎵</p>
+    </div>
+  </div>
+
+  <!-- DINO SELECT -->
+  <div id="screen-dino" class="screen hidden">
+    <div class="card wide-card">
+      <h2>🦕 Elige tu dinosaurio 🦖</h2>
+      <div class="select-layout">
+        <div class="preview-box">
+          <canvas id="preview-canvas" width="420" height="360"></canvas>
+          <div id="preview-name">T. Rex</div>
+          <div id="preview-desc"></div>
+        </div>
+        <div id="dino-grid" class="dino-grid"></div>
+      </div>
+      <div class="menu-buttons">
+        <button id="btn-back-menu" class="big-btn gray">⬅️ Atrás</button>
+        <button id="btn-to-track" class="big-btn green">¡Siguiente! ➡️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRACK SELECT -->
+  <div id="screen-track" class="screen hidden">
+    <div class="card wide-card">
+      <h2>🌈 Elige tu circuito 🏁</h2>
+      <div id="track-grid" class="track-grid"></div>
+      <div class="menu-buttons">
+        <button id="btn-back-dino" class="big-btn gray">⬅️ Atrás</button>
+        <button id="btn-race" class="big-btn green">🏁 ¡A CORRER! 🏁</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- COUNTDOWN -->
+  <div id="screen-countdown" class="screen hidden transparent"><div id="countdown-num">3</div></div>
+
+  <!-- PAUSE -->
+  <div id="screen-pause" class="screen hidden">
+    <div class="card">
+      <h2>⏸️ ¡Pausa!</h2>
+      <p class="subtitle">Tómate un respiro 🦕💤</p>
+      <div class="menu-buttons col">
+        <button id="btn-resume" class="big-btn green">▶️ ¡Seguir jugando!</button>
+        <button id="btn-restart" class="big-btn blue">🔄 Empezar de nuevo</button>
+        <button id="btn-quit" class="big-btn gray">🏠 Cambiar de dinosaurio</button>
+      </div>
+      <div class="controls-hint">Mando: <b>Start</b> = seguir · Teclado: <b>Esc</b> = seguir</div>
+    </div>
+  </div>
+
+  <!-- FINISH -->
+  <div id="screen-finish" class="screen hidden">
+    <div class="card title-card">
+      <div class="logo-row">🏆🎉🦖🎉🏆</div>
+      <h1>¡META! 🎊</h1>
+      <p class="subtitle" id="finish-text">¡Increíble carrera!</p>
+      <div id="finish-stats" class="stats"></div>
+      <div id="finish-stars" class="finish-stars">⭐⭐⭐</div>
+      <div class="menu-buttons">
+        <button id="btn-again" class="big-btn green">🔄 ¡Otra vez!</button>
+        <button id="btn-change" class="big-btn blue">🦕 Cambiar dino</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading" class="hidden"><div class="spin">🦖</div><p>Cargando dinosaurios…</p></div>
+</div>
+<script type="module" src="game.js"></script>
+</body>
+</html>
