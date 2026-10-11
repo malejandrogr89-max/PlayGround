@@ -29,8 +29,9 @@ export const TRACKS = [
 ];
 
 // ---------- helpers ----------
+// Estilo "juguete blando": sombreado suave global (sin facetas planas)
 function M(color, opts={}) {
-  return new THREE.MeshStandardMaterial({ color, roughness:.65, metalness:.05, flatShading:true, ...opts });
+  return new THREE.MeshStandardMaterial({ color, roughness:.65, metalness:.05, flatShading:false, ...opts });
 }
 function mesh(geo, material, x=0,y=0,z=0, rx=0,ry=0,rz=0, sx=1,sy=1,sz=1){
   const m = new THREE.Mesh(geo, material);
@@ -42,6 +43,64 @@ const SPH = (w=16,h=12)=>new THREE.SphereGeometry(1,w,h);
 const BOX = ()=>new THREE.BoxGeometry(1,1,1);
 const CYL = (s=12)=>new THREE.CylinderGeometry(1,1,1,s);
 const CONE = (s=12)=>new THREE.ConeGeometry(1,1,s);
+const EYE_BIG = 1.45; // factor de ojos grandes (juguete blando)
+
+/* ---------- acabado "juguete blando": pastel + gordito + contorno toon ---------- */
+const _softMats = new Set();
+function softenToy(group){
+  // colores pastel vivos + superficie mate suave (sin tocar ojos/párpados oscuros)
+  _softMats.clear();
+  const white = new THREE.Color(0xffffff);
+  group.traverse(o=>{
+    if(o.isMesh && o.material && o.material.isMeshStandardMaterial && !o.userData.isLid){
+      const m=o.material;
+      if(!_softMats.has(m)){
+        _softMats.add(m);
+        const c=m.color, lum=0.299*c.r+0.587*c.g+0.114*c.b;
+        if(lum>0.12) c.lerp(white,.28);
+        m.roughness=Math.max(m.roughness,.8);
+        if(m.bumpMap) m.bumpScale=.15;
+        m.flatShading=false;
+      }
+    }
+  });
+  // cuerpo "gordito": la malla mayor crece un poco en X/Z
+  let big=null, bigR=0;
+  const box=new THREE.Box3(), ctr=new THREE.Vector3(), sz=new THREE.Vector3();
+  group.traverse(o=>{
+    if(o.isMesh && !o.userData.isLid){
+      box.setFromObject(o); box.getSize(sz);
+      const r=Math.max(sz.x,sz.y,sz.z);
+      if(r>bigR){ bigR=r; big=o; }
+    }
+  });
+  if(big){ big.scale.x*=1.08; big.scale.z*=1.08; }
+}
+function addOutlines(group){
+  // contorno suave tipo dibujo animado: cáscara BackSide en las 2 masas
+  // principales (la segunda, alejada de la primera: cuerpo + cabeza, no barriga)
+  const cands=[];
+  const box=new THREE.Box3(), ctr=new THREE.Vector3(), sz=new THREE.Vector3();
+  group.traverse(o=>{
+    if(o.isMesh && !o.userData.isLid && o.geometry){
+      box.setFromObject(o); box.getCenter(ctr); box.getSize(sz);
+      cands.push({o, r:Math.max(sz.x,sz.y,sz.z), c:ctr.clone()});
+    }
+  });
+  cands.sort((a,b)=>b.r-a.r);
+  const picked=[];
+  for(const cd of cands){
+    if(cd.r<0.3) continue;
+    if(picked.length===0 || picked[0].c.distanceTo(cd.c)>0.8) picked.push(cd);
+    if(picked.length===2) break;
+  }
+  const lineM=new THREE.MeshBasicMaterial({color:0x4a3428, side:THREE.BackSide});
+  for(const p of picked){
+    const shell=new THREE.Mesh(p.o.geometry, lineM);
+    shell.scale.setScalar(1.06); shell.castShadow=false; shell.receiveShadow=false;
+    p.o.add(shell);
+  }
+}
 
 /* ============================================================
    FÁBRICA DE DINOSAURIOS — cada uno anatomía + silueta propia.
@@ -50,6 +109,7 @@ const CONE = (s=12)=>new THREE.ConeGeometry(1,1,s);
    head, crest, wings[], plates[] para animar.
    ============================================================ */
 function baseEyes(head, x, y, z, s=0.11){
+  s *= EYE_BIG; // ojos grandes y tiernos (proporción juguete blando)
   const w = M(0xffffff,{roughness:.25}), b = M(0x2b2b3a,{roughness:.2});
   const irisCols = [0x7a4a21,0x2e7d32,0x1565c0,0x6a1b9a,0xb26a00,0x00838f,0xc2185b,0x4a6572];
   const iris = M(irisCols[(Math.random()*irisCols.length)|0],{roughness:.25});
@@ -486,10 +546,10 @@ function buildTiburon(d){
   const w = M(0xffffff,{roughness:.25}), b = M(0x223344,{roughness:.2});
   g.userData.lids = g.userData.lids||[];
   for(const s of [-1,1]){
-    const e = mesh(SPH(10,8), w, s*.34,1.18,-.5, 0,0,0, .13,.15,.1); g.add(e);
-    const p = mesh(SPH(8,6), b, s*.4,1.18,-.56, 0,0,0, .06,.075,.05); g.add(p);
+    const e = mesh(SPH(10,8), w, s*.36,1.18,-.5, 0,0,0, .18,.21,.13); g.add(e);
+    const p = mesh(SPH(8,6), b, s*.43,1.19,-.57, 0,0,0, .085,.1,.06); g.add(p);
     const hl = new THREE.Mesh(new THREE.SphereGeometry(1,8,6), new THREE.MeshBasicMaterial({color:0xffffff}));
-    hl.position.set(s*.42,1.25,-.62); hl.scale.setScalar(.025); g.add(hl);
+    hl.position.set(s*.46,1.28,-.64); hl.scale.setScalar(.032); g.add(hl);
     const lid = mesh(SPH(10,8), M(0x2a6a9a), s*.34,1.2,-.52, 0,0,0, .15,.02,.12);
     lid.userData.isLid=true; lid.userData.baseY=.02; lid.castShadow=false;
     g.add(lid); g.userData.lids.push(lid);
@@ -532,6 +592,7 @@ export function buildDinosaur(id){
   const d = DINOS.find(x=>x.id===id) || DINOS[0];
   const built = DINO_BUILDERS[d.id](d);
   try { detailDino(d.id, built.group, built.parts, d); } catch(e){}
+  try { softenToy(built.group); addOutlines(built.group); } catch(e){}
   return { ...built, def: d };
 }
 
@@ -882,7 +943,7 @@ export function themeProps(scene, track, LEN){
     grp.add(f);
   }
   function rock(x,z,s=1,c=0x8a8a96){
-    const r=mesh(new THREE.DodecahedronGeometry(1,0), M(c,{flatShading:true, roughness:.9}), x,.4*s,z, Math.random(),Math.random(),0, s,s*.8,s);
+    const r=mesh(new THREE.DodecahedronGeometry(1,0), M(c,{roughness:.9}), x,.4*s,z, Math.random(),Math.random(),0, s,s*.8,s);
     grp.add(r);
     if(Math.random()<.5) grp.add(mesh(SPH(8,6), M(0x5da33f,{roughness:.9}), x+s*.4,.15,z+s*.3, 0,0,0, s*.4,s*.25,s*.4)); // musgo
   }
