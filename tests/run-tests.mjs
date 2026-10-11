@@ -25,6 +25,8 @@ check('4 circuitos en TRACKS', (js.match(/id:'(jungla|desierto|valle|volcan)'/g)
 check('mando Xbox (Gamepad API: stick/cruceta/A/Start)', js.includes('getGamepads') && js.includes('buttons[14]') && js.includes('buttons[15]') && js.includes('buttons[0]') && js.includes('buttons[9]'));
 check('teclado (flechas/espacio/escape)', js.includes('ArrowLeft') && js.includes('ArrowRight') && js.includes("code==='Space'") && js.includes("code==='Escape'"));
 check('kart con 4 ruedas que giran', js.includes('kartWheels') || (js.includes('wheels') && js.includes('tire.rotation')));
+check('F medalla 1-3 según estrellas + total animado', js.includes('MEDALLA') && js.includes('_countIv') && js.includes('stat pts'));
+check('F hitos 50/90% con rugido contento y cartel con icono', js.includes('mile50') && js.includes('mile90') && js.includes('¡Muy bien!') && js.includes('¡Casi llegas!'));
 check('E ejes: troncos verticales (eje Y) y copas hacia arriba', !js.includes('.28,.28,2.2') && js.includes('.28,2.2,.28') && js.includes('setFromUnitVectors'));
 check('E rendimiento: pianos y líneas con InstancedMesh', js.includes('InstancedMesh'));
 check('E laterales: bebés, flores, mariposas, huevos, guirnaldas, pteras, arco', js.includes('babyDino') && js.includes('bigFlower') && js.includes('butterfly') && js.includes('giantEgg') && js.includes('garland') && js.includes('distantPteras') && js.includes('archStar'));

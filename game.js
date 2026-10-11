@@ -1527,7 +1527,7 @@ function startRace(){
     scene.add(r.rig);
     rivals.push({ ...r, z:4-i*4, x:i===0?-3.4:3.4, spd:13.5+i*0.9, wob:Math.random()*9 });
   }
-  Object.assign(state,{speed:0,x:0,y:0,vy:0,z:10,targetX:0,eggs:0,stars:0,points:0,rowBonus:{},hits:0,time:0,slowT:0,invT:0,finished:false});
+  Object.assign(state,{speed:0,x:0,y:0,vy:0,z:10,targetX:0,eggs:0,stars:0,points:0,rowBonus:{},mile50:false,mile90:false,hits:0,time:0,slowT:0,invT:0,finished:false});
   setHUD(true); updateHUD(track);
   // cuenta atrás 3-2-1-¡YA!
   state.mode='countdown'; show('screen-countdown');
@@ -1573,11 +1573,18 @@ function finishRace(){
   celebrate();
   const bonus = state.eggs + state.stars*5;
   const score = Math.max(0, 1000 - state.time*2 - state.hits*15 + bonus*10)|0;
-  const nstars = state.hits===0&&state.time<90 ? 3 : state.hits<=3 ? 3 : state.hits<=6 ? 2 : 2;
+  // MEDALLA 1-3 según estrellas recogidas (siempre al menos 1: sin castigos)
+  const nstars = state.stars>=8?3 : state.stars>=4?2 : 1;
   $('finish-text').textContent = `¡${player.def.name} cruzó la meta! ${player.def.emoji}🎉`;
   $('finish-stats').innerHTML =
-    `<div class="stat">⏱️ ${state.time.toFixed(1)}s</div><div class="stat">🥚 ${state.eggs}</div><div class="stat">⭐ ${state.stars}</div><div class="stat">✨ ${state.points||0} pts</div><div class="stat">🏆 ${score} pts</div>`;
+    `<div class="stat">⏱️ ${state.time.toFixed(1)}s</div><div class="stat">🥚 ${state.eggs}</div><div class="stat">⭐ ${state.stars}</div><div class="stat pts">✨ 0 pts</div><div class="stat">🏆 ${score} pts</div>`;
   $('finish-stars').textContent = '⭐'.repeat(nstars);
+  // animación sencilla del total: el contador sube solo
+  clearInterval(state._countIv);
+  { let shown=0; const target=state.points||0;
+    state._countIv=setInterval(()=>{ shown+=Math.max(1,Math.ceil((target-shown)/8));
+      if(shown>=target){ shown=target; clearInterval(state._countIv); }
+      const el=document.querySelector('#finish-stats .pts'); if(el) el.textContent='✨ '+shown+' pts'; },90); }
   domConfetti($('screen-finish'));
   setTimeout(()=>{ show('screen-finish'); }, 1800);
   toast('🏁 ¡META! ¡Lo hiciste genial! 🎊');
@@ -1811,6 +1818,10 @@ function loop(){
     }
     updateHUD();
     updateDust(dt); updateBursts(dt);
+    // HITOS de ánimo al 50 % y 90 %: rugido contento + cartel con icono
+    { const prog=(10-state.z)/world.LEN;
+      if(prog>=.5&&!state.mile50){ state.mile50=true; dinoRoar(player,.7); toast('🎉 ¡Muy bien! 🎉'); }
+      if(prog>=.9&&!state.mile90){ state.mile90=true; dinoRoar(player,.75); toast('🏅 ¡Casi llegas! 🏅'); } }
     if(world.fx) updateFx(world.fx, dt, elapsed);
     if(world.sky) world.sky.position.set(state.x, 0, state.z-60);
     // cámara en tercera persona: suave, con leve FOV de velocidad (sin mareos)
