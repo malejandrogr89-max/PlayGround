@@ -96,3 +96,17 @@ silencio total 0. BPM medidos 93.7.
 - **Estrellas**: 5 puntas extruidas (geometría/material compartidos), 4
   hileras de 5 por circuito, balanceo ±35°, magnetismo suave, +10, hilera
   +20 con do-re-mi-sol, contador y reinicio verificados.
+
+### 🌈 Ronda 3, parte 2
+- **Laterales**: bebés que saltan/saludan (3/circuito), flores grandes,
+  mariposas (6), helechos, rocas redondeadas, huevos gigantes, guirnaldas,
+  2 pteranodones lejanos, estrella grande en el arco de meta y fondo propio
+  (montañas/lago/oasis/segundo volcán). Todo fuera de pista, sin colisión.
+- **Ejes corregidos**: 63/48/154/4 troncos tumbados → 0; copas 312/312
+  hacia arriba; pianos y líneas a InstancedMesh (~700 draws menos).
+- **Recompensas**: medalla 1-3 por estrellas (0→1, 5→2, 12→3 verificado),
+  total animado e hitos 50 %/90 % con rugido y cartel de iconos.
+- **Música**: RMS 0,0163 (9–15× bajo los rugidos 0,144–0,246), >4 kHz al
+  0,37 %, sliders persistentes (0.3/0.6 restaurados tras recarga).
+- **Pruebas**: 47/47 en verde; tour Chrome con 0 errores; 60 s de carrera
+  estables; builds deterministas (sin fugas).

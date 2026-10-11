@@ -25,6 +25,9 @@ check('4 circuitos en TRACKS', (js.match(/id:'(jungla|desierto|valle|volcan)'/g)
 check('mando Xbox (Gamepad API: stick/cruceta/A/Start)', js.includes('getGamepads') && js.includes('buttons[14]') && js.includes('buttons[15]') && js.includes('buttons[0]') && js.includes('buttons[9]'));
 check('teclado (flechas/espacio/escape)', js.includes('ArrowLeft') && js.includes('ArrowRight') && js.includes("code==='Space'") && js.includes("code==='Escape'"));
 check('kart con 4 ruedas que giran', js.includes('kartWheels') || (js.includes('wheels') && js.includes('tire.rotation')));
+check('H audio: voz burbujeante del tiburón', js.includes('bubbles('));
+check('H medalla: niveles por estrellas', js.includes('state.stars>=8'));
+check('H cambio de personaje (sin fugas: rebuild limpio)', html.includes('btn-change') && html.includes('btn-quit') && js.includes('clearScene'));
 check('G música suave: brillo reducido + campanillas discretas', js.includes('menos brillo') && js.includes('campanilla discreta'));
 check('G persistencia de sliders', js.includes('dr3d_mus') && js.includes('dr3d_sfx'));
 check('F medalla 1-3 según estrellas + total animado', js.includes('MEDALLA') && js.includes('_countIv') && js.includes('stat pts'));
