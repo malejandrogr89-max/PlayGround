@@ -547,7 +547,27 @@ export function buildDinosaur(id){
   const built = DINO_BUILDERS[d.id](d);
   try { detailDino(d.id, built.group, built.parts, d); } catch(e){}
   try { softToyFinish(built.group, built.parts, d.id); } catch(e){}
+  try { applyDinoTint(built.group, d); } catch(e){}
+  try { attachGear(built.group, built.parts); } catch(e){}
   return { ...built, def: d };
+}
+/* tinte y kart efectivo según el álbum (llamar antes de construir) */
+function refreshLooks(){
+  try{
+    const g=loadGear();
+    DINO_TINT = g.dinoTint>=0 ? DINO_TINTS[g.dinoTint%DINO_TINTS.length] : null;
+  }catch{ DINO_TINT=null; }
+}
+function kartColorIdx(di){
+  try{
+    const g=loadGear();
+    if(g.kartTint>=0){
+      // el tinte del álbum es un color: buscar su índice en la paleta del kart
+      const i=KART_COLORS.findIndex(c=>c===KART_TINTS[g.kartTint%KART_TINTS.length]);
+      if(i>=0) return i;
+    }
+  }catch{}
+  return di;
 }
 /* acabado "juguete blando": cabezas un poco más grandes (proporción tierna;
    el braquiosaurio ya trae su cabeza al +50 %, no se reescala)
@@ -1620,6 +1640,90 @@ function setHelp(h){
 }
 function assistK(){ return (HELP_LEVELS[state.help]||HELP_LEVELS.peque).assist; }
 function autoThrottle(){ return (HELP_LEVELS[state.help]||HELP_LEVELS.peque).auto; }
+/* ============ ÁLBUM: accesorios + colores (todo en localStorage) ============ */
+const GEARS = [
+  {id:'glasses', icon:'🕶️', name:'Gafas', need:1},
+  {id:'cap',     icon:'🧢', name:'Gorro',  need:2},
+  {id:'bow',     icon:'🎀', name:'Lazo',   need:3},
+  {id:'crown',   icon:'👑', name:'Corona', need:4},
+];
+const DINO_TINTS = [0x66cf7e,0x8abdff,0xff9a66,0xffbcd4,0xb49bf0,0x5fd8cb,0xffd93b];
+const KART_TINTS = [0xff4757,0x1cb0f6,0xffd43b,0x58cc02,0xa55eea,0xff5fa2,0x00b4d8];
+let DINO_TINT = null;
+function loadGear(){
+  try{
+    return {
+      equipped: JSON.parse(localStorage.getItem('dr3d_gear')||'{"top":null,"glasses":false,"bow":false}'),
+      tracks: JSON.parse(localStorage.getItem('dr3d_tracks')||'[]'),
+      totalStars: +(localStorage.getItem('dr3d_total_stars')||0),
+      dinoTint: +(localStorage.getItem('dr3d_dtin')??-1),
+      kartTint: +(localStorage.getItem('dr3d_ktin')??-1),
+    };
+  }catch{ return {equipped:{top:null,glasses:false,bow:false},tracks:[],totalStars:0,dinoTint:-1,kartTint:-1}; }
+}
+function saveGear(g){
+  try{
+    localStorage.setItem('dr3d_gear',JSON.stringify(g.equipped));
+    localStorage.setItem('dr3d_tracks',JSON.stringify(g.tracks));
+    localStorage.setItem('dr3d_total_stars',String(g.totalStars));
+    localStorage.setItem('dr3d_dtin',String(g.dinoTint));
+    localStorage.setItem('dr3d_ktin',String(g.kartTint));
+  }catch{}
+}
+function gearUnlocked(g, id){ const def=GEARS.find(x=>x.id===id); return g.tracks.length>=(def?def.need:99); }
+/* accesorios 3D de juguete, anclados a la caja de la cabeza (valen para el
+   braquiosaurio: van en su cabeza, nunca en el cuello; nada tapa los ojos) */
+function buildGearMesh(id, u){
+  const g=new THREE.Group();
+  if(id==='cap'){
+    g.add(mesh(SPH(12,10), M(0xff5fa2,{roughness:.6}), 0,0,0, 0,0,0, u*.45,u*.32,u*.45));
+    g.add(mesh(CYL(14), M(0xff5fa2,{roughness:.6}), 0,-u*.12,u*.1, Math.PI/2-.25,0,0, u*.5,u*.5,.1)); // visera
+    g.add(mesh(SPH(8,6), M(0xffffff,{roughness:.6}), 0,u*.3,-u*.05, 0,0,0, u*.14,u*.14,u*.14)); // pompón
+  } else if(id==='crown'){
+    g.add(mesh(CYL(10), M(0xffd43b,{roughness:.3,metalness:.4,emissive:0x7a5a00,emissiveIntensity:.2}), 0,0,0, 0,0,0, u*.34,u*.34,.3));
+    for(let i=0;i<5;i++){ const a=i/5*Math.PI*2;
+      g.add(mesh(CONE(6), M(0xffd43b,{roughness:.3,metalness:.4}), Math.cos(a)*u*.3,u*.28,Math.sin(a)*u*.3, 0,0,0, u*.09,u*.22,u*.09)); }
+    g.add(mesh(SPH(8,6), M(0xff5fa2,{emissive:0x881133,emissiveIntensity:.3}), 0,u*.05,u*.33, 0,0,0, u*.09,u*.09,.06)); // joya
+  } else if(id==='glasses'){
+    for(const s of [-1,1])
+      g.add(mesh(new THREE.TorusGeometry(u*.17,u*.045,8,18), M(0x33334a,{roughness:.4}), s*u*.2,0,0, 0,0,0, 1,1,1));
+    g.add(mesh(BOX(), M(0x33334a,{roughness:.4}), 0,u*.03,0, 0,0,0, u*.14,u*.05,.05)); // puente
+  } else if(id==='bow'){
+    for(const s of [-1,1])
+      g.add(mesh(CONE(8), M(0xff7fb0,{roughness:.6}), s*u*.22,0,0, 0,0,s*1.2, u*.24,u*.3,.1));
+    g.add(mesh(SPH(8,6), M(0xe0508a,{roughness:.6}), 0,0,0, 0,0,0, u*.12,u*.12,u*.12)); // nudo
+  }
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow=false; } });
+  return g;
+}
+function attachGear(group, parts){
+  let g;
+  try{ g=loadGear(); }catch{ return; }
+  const hg = parts.headG||parts.head;
+  if(!hg||!hg.isGroup) return;
+  // solo piezas desbloqueadas (por si el guardado se editó a mano)
+  const top=(g.equipped.top&&gearUnlocked(g,g.equipped.top))?g.equipped.top:null;
+  const glasses=g.equipped.glasses&&gearUnlocked(g,'glasses');
+  const bow=g.equipped.bow&&gearUnlocked(g,'bow');
+  try{
+    hg.updateWorldMatrix(true,true);
+    const box=new THREE.Box3().setFromObject(hg);
+    const c=box.getCenter(new THREE.Vector3()), s=new THREE.Vector3(); box.getSize(s);
+    const u=Math.max(s.x,s.y,s.z)||1;
+    const toLocal=v=>hg.worldToLocal(v.clone());
+    const put=(id,pos,uu)=>{ const m=buildGearMesh(id,uu||u); m.position.copy(toLocal(pos)); hg.add(m); };
+    if(top) put(top, new THREE.Vector3(c.x,box.max.y+u*.1,c.z));
+    if(glasses) put('glasses', new THREE.Vector3(c.x,box.min.y+s.y*.55,box.min.z-s.x*.06), s.x);
+    if(bow) put('bow', new THREE.Vector3(box.max.x+u*.12,c.y+s.y*.08,c.z));
+  }catch{}
+}
+function applyDinoTint(group, def){
+  if(DINO_TINT===null||!def) return;
+  group.traverse(o=>{
+    if(o.isMesh&&o.material&&o.material.isMeshStandardMaterial&&o.material.color&&
+       o.material.color.getHex()===def.color){ o.material=o.material.clone(); o.material.color.set(DINO_TINT); }
+  });
+}
 let world=null, ents=null, player=null, rivals=[], confetti=null, clock=new THREE.Clock();
 
 function toast(msg, ms=1600){
@@ -1716,7 +1820,7 @@ function startRace(){
   world = buildWorld(scene, track);
   ents = spawnEntities(scene, world.LEN);
   const di = DINOS.findIndex(d=>d.id===state.dinoId);
-  player = makePlayer(state.dinoId, di, false, state.kart);
+  refreshLooks(); player = makePlayer(state.dinoId, kartColorIdx(di), false, state.kart);
   scene.add(player.rig);
   rivals = [];
   // 3 rivales con dinos distintos (incluido el tiburón), algo más lentos que el jugador
@@ -1791,6 +1895,18 @@ function finishRace(){
     `<div class="stat" style="font-size:30px">${medal} ¡${rank}.º!</div><div class="stat">⏱️ ${state.time.toFixed(1)}s</div><div class="stat">🥚 ${state.eggs}</div><div class="stat">⭐ ${state.stars}</div><div class="stat">✨ ${state.points||0} pts</div><div class="stat">🏆 ${score} pts</div>`;
   $('finish-stars').textContent = '⭐'.repeat(nstars);
   domConfetti($('screen-finish'));
+  // álbum: guardar circuito completado + estrellas totales y anunciar desbloqueos
+  try{
+    const g=loadGear(), before=g.tracks.length;
+    if(!g.tracks.includes(state.trackId)) g.tracks.push(state.trackId);
+    g.totalStars+=state.stars; saveGear(g);
+    for(const gd of GEARS){
+      if(g.tracks.length>=gd.need && before<gd.need){
+        setTimeout(()=>{ toast(`${gd.icon} ¡Nuevo: ${gd.name}! Míralo en el álbum 🏆`); music.fanfare(); },2200);
+        break;
+      }
+    }
+  }catch{}
   setTimeout(()=>{ show('screen-finish'); }, 1800);
   toast('🏁 ¡META! ¡Lo hiciste genial! 🎊');
 }
@@ -2172,7 +2288,7 @@ function initPreview(){
 function showPreview(id){
   if(pvRig){ pvScene.remove(pvRig); pvRig=null; }
   const di=DINOS.findIndex(d=>d.id===id);
-  const kart=buildKart(di, id==='tiburon', state.kart); const {group,parts,def}=buildDinosaur(id);
+  refreshLooks(); const kart=buildKart(kartColorIdx(di), id==='tiburon', state.kart); const {group,parts,def}=buildDinosaur(id);
   mountDinoOnKart(group,kart.group,id);
   pvRig=kart.group; pvRig.userData.anim={rig:kart.group,kart,dino:group,parts,def};
   pvScene.add(pvRig);
@@ -2205,6 +2321,44 @@ function wireUI(){
   loadHelp(); setHelp(state.help);
   buildSelectUI(); initPreview(); showPreview(state.dinoId);
   $('btn-start').onclick=()=>{ music.ensure(); music.click(); music.startMusic(); state.mode='dino'; show('screen-dino'); };
+  $('btn-album').onclick=()=>{ music.ensure(); music.click(); state.mode='album'; buildAlbum(); show('screen-album'); };
+  $('btn-album-back').onclick=()=>{ music.click(); state.mode='menu'; show('screen-menu'); };
+function buildAlbum(){
+  const g=loadGear();
+  $('album-progress').textContent=`🏁 ${g.tracks.length}/4 circuitos · ⭐ ${g.totalStars} estrellas`;
+  const grid=$('album-grid'); grid.innerHTML='';
+  for(const gd of GEARS){
+    const un=gearUnlocked(g,gd.id);
+    const el=document.createElement('div');
+    const equipped=(gd.id==='glasses')?g.equipped.glasses:(gd.id==='bow')?g.equipped.bow:(g.equipped.top===gd.id);
+    el.className='track-card album-card'+(equipped?' sel':'');
+    el.innerHTML=`<div class="em">${un?gd.icon:'🔒'}</div><div class="nm">${un?gd.name:'???'}</div><div class="ds">${un?'Tócalo para poner/quitar':`Completa ${gd.need} circuito(s)`}</div>`;
+    if(un) el.onclick=()=>{
+      const gg=loadGear();
+      if(gd.id==='glasses') gg.equipped.glasses=!gg.equipped.glasses;
+      else if(gd.id==='bow') gg.equipped.bow=!gg.equipped.bow;
+      else gg.equipped.top=(gg.equipped.top===gd.id?null:gd.id);
+      saveGear(gg); music.ensure(); music.click(); buildAlbum(); showPreview(state.dinoId);
+    };
+    grid.appendChild(el);
+  }
+  const dd=$('album-dino'); dd.innerHTML='';
+  DINO_TINTS.forEach((c,i)=>{
+    const b=document.createElement('button');
+    b.className='kart-btn'+(g.dinoTint===i?' sel':'');
+    b.innerHTML=`<span style="font-size:34px">🦖</span><span style="background:#${c.toString(16).padStart(6,'0')}">color</span>`;
+    b.onclick=()=>{ const gg=loadGear(); gg.dinoTint=(gg.dinoTint===i?-1:i); saveGear(gg); music.click(); buildAlbum(); showPreview(state.dinoId); };
+    dd.appendChild(b);
+  });
+  const dc=$('album-colors'); dc.innerHTML='';
+  KART_TINTS.forEach((c,i)=>{
+    const b=document.createElement('button');
+    b.className='kart-btn'+(g.kartTint===i?' sel':'');
+    b.innerHTML=`<span style="font-size:34px">🏎️</span><span style="background:#${c.toString(16).padStart(6,'0')}">color</span>`;
+    b.onclick=()=>{ const gg=loadGear(); gg.kartTint=(gg.kartTint===i?-1:i); saveGear(gg); music.click(); buildAlbum(); showPreview(state.dinoId); };
+    dc.appendChild(b);
+  });
+}
   document.querySelectorAll('#help-row .kart-btn').forEach(b=>{
     b.onclick=()=>{ music.ensure(); music.click(); setHelp(b.dataset.help); };
   });
@@ -2270,7 +2424,7 @@ function wireUI(){
     f.group.userData.s0=.8;
   }
   const motes = makeSparks(scene, 0, 6, -6, 0xfff59b, 50, 16);
-  player=makePlayer('trex',0,false,state.kart); player.rig.position.set(-8,0.3,-2.3); scene.add(player.rig);
+  refreshLooks(); player=makePlayer('trex',kartColorIdx(0),false,state.kart); player.rig.position.set(-8,0.3,-2.3); scene.add(player.rig);
   camera.position.set(-2.6,3.2,3.6); camera.lookAt(-4.6,1.5,-3.2);
   const menuAnim=()=>{
     if(state.mode==='menu'||state.mode==='dino'||state.mode==='track'){
@@ -2290,7 +2444,7 @@ function wireUI(){
       if(player.def.id!==state.dinoId){
         scene.remove(player.rig);
         const di=DINOS.findIndex(d=>d.id===state.dinoId);
-        player=makePlayer(state.dinoId,di,false,state.kart); player.rig.position.set(-8,0.3,-2.3); scene.add(player.rig);
+        refreshLooks(); player=makePlayer(state.dinoId,kartColorIdx(di),false,state.kart); player.rig.position.set(-8,0.3,-2.3); scene.add(player.rig);
         dinoRoar(player,.3);
       }
       // al braquiosaurio se le encuadra a la izquierda en el menú

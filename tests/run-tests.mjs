@@ -50,6 +50,8 @@ check('niveles de ayuda Peque/Normal/Mayor guardados', js.includes('HELP_LEVELS'
 check('mando Elite: mapeo standard, B, menús, desconexión', js.includes("mapping!=='standard'") && js.includes('MenuNav') && js.includes('padLost') && html.includes('pad-lost') && js.includes('pad-focus'));
 check('vibración: dual-rumble con tope 0.6, sustitutiva y ajuste', js.includes('vibrationActuator') && js.includes('Math.min(.6') && js.includes('dr3d_rumble') && html.includes('chk-rumble') && js.includes('Rumble.buzz'));
 check('tutorial único de 20s + flecha guía sin texto', js.includes('dr3d_tuto') && js.includes('maybeTuto') && html.includes('guide-arrow') && js.includes('updateGuide'));
+check('álbum: accesorios desbloqueables, equipables y guardados', js.includes('dr3d_tracks') && js.includes('gearUnlocked') && js.includes('attachGear') && html.includes('screen-album'));
+check('colores de dino y kart personalizables', js.includes('DINO_TINTS') && js.includes('KART_TINTS') && js.includes('applyDinoTint'));
 check('sin llamadas a add() con no-objetos', !js.includes('add?.(0)'));
 
 if (process.argv.includes('--browser')) {
