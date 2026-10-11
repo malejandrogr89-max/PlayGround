@@ -584,53 +584,53 @@ export function buildKart(colorIdx=0, marine=false){
   const bodyM = M(col,{roughness:.28, metalness:.25}), darkM = M(0x333344,{roughness:.6});
   const chromeM = M(0xdfe6ee,{roughness:.2, metalness:.75});
   const trimM = M(marine?0x0096c7:col,{roughness:.35});
-  // chasis bajo y abierto: el personaje queda visible por completo
-  const chassis = mesh(BOX(), bodyM, 0,.42,.15, 0,0,0, 1.15,.22,1.9); g.add(chassis);
-  g.add(mesh(BOX(), trimM, 0,.5,-.55, 0,0,0, .9,.14,.5)); // morro
+  // chasis alto de juguete: el personaje queda visible por completo
+  const chassis = mesh(BOX(), bodyM, 0,.65,.15, 0,0,0, 1.15,.22,1.9); g.add(chassis);
+  g.add(mesh(BOX(), trimM, 0,.73,-.55, 0,0,0, .9,.14,.5)); // morro
   if(marine){ // franja de olas + salvavidas a los lados (bajos, no tapan)
-    g.add(mesh(BOX(), trimM, 0,.42,.15, 0,0,0, 1.17,.08,1.92));
+    g.add(mesh(BOX(), trimM, 0,.65,.15, 0,0,0, 1.17,.08,1.92));
     for(const s of [-1,1]){
-      const ring = mesh(new THREE.TorusGeometry(.22,.08,10,20), M(0xff6b35,{roughness:.5}), s*.98,.42,.3, 0,Math.PI/2,0, 1,1,1);
+      const ring = mesh(new THREE.TorusGeometry(.22,.08,10,20), M(0xff6b35,{roughness:.5}), s*.98,.65,.3, 0,Math.PI/2,0, 1,1,1);
       g.add(ring);
-      g.add(mesh(BOX(), M(0xffffff), s*.98,.64,.3, 0,0,0, .1,.08,.1));
-      g.add(mesh(BOX(), M(0xffffff), s*.98,.2,.3, 0,0,0, .1,.08,.1));
+      g.add(mesh(BOX(), M(0xffffff), s*.98,.87,.3, 0,0,0, .1,.08,.1));
+      g.add(mesh(BOX(), M(0xffffff), s*.98,.43,.3, 0,0,0, .1,.08,.1));
     }
-    g.add(mesh(BOX(), trimM, 0,1.32,1.15, 0,0,0, .5,.3,.06)); // banderita con ola
-    g.add(mesh(SPH(8,6), M(0xffffff), 0,1.32,1.19, 0,0,0, .1,.1,.05));
+    g.add(mesh(BOX(), trimM, 0,1.55,1.15, 0,0,0, .5,.3,.06)); // banderita con ola
+    g.add(mesh(SPH(8,6), M(0xffffff), 0,1.55,1.19, 0,0,0, .1,.1,.05));
   }
-  g.add(mesh(BOX(), bodyM, 0,.34,-1.05, .12,0,0, 1.0,.1,.5)); // alerón delantero
+  g.add(mesh(BOX(), bodyM, 0,.57,-1.05, .12,0,0, 1.0,.1,.5)); // alerón delantero
   for(const s of [-1,1]){ // pontones laterales con franja blanca
-    g.add(mesh(BOX(), bodyM, s*.72,.4,.3, 0,0,0, .3,.26,1.1));
-    g.add(mesh(BOX(), M(0xffffff,{roughness:.35}), s*.72,.48,.3, 0,0,0, .32,.07,1.0));
-    g.add(mesh(BOX(), darkM, s*.72,.28,-.75, 0,0,0, .34,.1,.3)); // guardabarros
-    g.add(mesh(BOX(), darkM, s*.72,.28,.95, 0,0,0, .34,.1,.3));
+    g.add(mesh(BOX(), bodyM, s*.72,.63,.3, 0,0,0, .3,.26,1.1));
+    g.add(mesh(BOX(), M(0xffffff,{roughness:.35}), s*.72,.71,.3, 0,0,0, .32,.07,1.0));
+    g.add(mesh(BOX(), darkM, s*.72,.51,-.75, 0,0,0, .34,.1,.3)); // guardabarros
+    g.add(mesh(BOX(), darkM, s*.72,.51,.95, 0,0,0, .34,.1,.3));
   }
-  g.add(mesh(SPH(), M(0xfff200,{emissive:0xffee00,emissiveIntensity:.5}), 0,.55,-1.12, 0,0,0, .16,.1,.08)); // faro
-  for(const s of [-1,1]) g.add(mesh(SPH(8,6), M(0xff5252,{emissive:0xcc0000,emissiveIntensity:.5}), s*.3,.55,1.28, 0,0,0, .09,.07,.05)); // pilotos
-  g.add(mesh(BOX(), darkM, 0,.62,.75, -.25,0,0, .95,.3,.18)); // respaldo bajo (no tapa)
-  g.add(mesh(CYL(10), darkM, 0,.5,.35, Math.PI/2,0,0, .42,.42,.12)); // asiento
-  g.add(mesh(BOX(), M(0xffd43b,{roughness:.4}), 0,.56,.35, 0,0,0, .3,.06,.3)); // cojín
-  const wheel = mesh(new THREE.TorusGeometry(.2,.05,10,20), darkM, 0,.68,-.35, -.5,0,0, 1,1,1); g.add(wheel); // volante
-  g.add(mesh(CYL(8), chromeM, 0,.6,-.28, .9,0,0, .035,.035,.3)); // columna
-  g.add(mesh(SPH(8,6), bodyM, 0,.68,-.35, 0,0,0, .07,.07,.07));
+  g.add(mesh(SPH(), M(0xfff200,{emissive:0xffee00,emissiveIntensity:.5}), 0,.78,-1.12, 0,0,0, .16,.1,.08)); // faro
+  for(const s of [-1,1]) g.add(mesh(SPH(8,6), M(0xff5252,{emissive:0xcc0000,emissiveIntensity:.5}), s*.3,.78,1.28, 0,0,0, .09,.07,.05)); // pilotos
+  g.add(mesh(BOX(), darkM, 0,.85,.75, -.25,0,0, .95,.3,.18)); // respaldo bajo (no tapa)
+  g.add(mesh(CYL(10), darkM, 0,.73,.35, Math.PI/2,0,0, .42,.42,.12)); // asiento
+  g.add(mesh(BOX(), M(0xffd43b,{roughness:.4}), 0,.79,.35, 0,0,0, .3,.06,.3)); // cojín
+  const wheel = mesh(new THREE.TorusGeometry(.2,.05,10,20), darkM, 0,.91,-.35, -.5,0,0, 1,1,1); g.add(wheel); // volante
+  g.add(mesh(CYL(8), chromeM, 0,.83,-.28, .9,0,0, .035,.035,.3)); // columna
+  g.add(mesh(SPH(8,6), bodyM, 0,.91,-.35, 0,0,0, .07,.07,.07));
   // alerón trasero alto pero estrecho (no tapa la cola lateral)
-  g.add(mesh(BOX(), bodyM, -.4,.85,1.15, 0,0,0, .08,.5,.08));
-  g.add(mesh(BOX(), bodyM, .4,.85,1.15, 0,0,0, .08,.5,.08));
-  g.add(mesh(BOX(), M(0xffffff), 0,1.1,1.15, 0,0,0, 1.1,.16,.3));
+  g.add(mesh(BOX(), bodyM, -.4,1.08,1.15, 0,0,0, .08,.5,.08));
+  g.add(mesh(BOX(), bodyM, .4,1.08,1.15, 0,0,0, .08,.5,.08));
+  g.add(mesh(BOX(), M(0xffffff), 0,1.33,1.15, 0,0,0, 1.1,.16,.3));
   // escapes cromados con brillo
   for(const s of [-1,1]){
-    g.add(mesh(CYL(8), chromeM, s*.35,.5,1.1, Math.PI/2,0,0, .07,.07,.35));
-    g.add(mesh(CYL(8), M(0x222222,{emissive:0xff8800,emissiveIntensity:.25}), s*.35,.5,1.28, Math.PI/2,0,0, .055,.055,.04));
+    g.add(mesh(CYL(8), chromeM, s*.35,.73,1.1, Math.PI/2,0,0, .07,.07,.35));
+    g.add(mesh(CYL(8), M(0x222222,{emissive:0xff8800,emissiveIntensity:.25}), s*.35,.73,1.28, Math.PI/2,0,0, .055,.055,.04));
   }
-  // ruedas: giran (spin) y las delanteras orientan (steer)
+  // RUEDAS GORDAS de juguete: más anchas que el cuerpo, con llanta de color
   const wheels = [];
   const tireM = M(0x22222c,{roughness:.9, bumpMap:scaleTexture(), bumpScale:.25}), hubM = M(0xffffff,{roughness:.25, metalness:.4});
-  for(const [x,z,front] of [[-.68,-.6,1],[.68,-.6,1],[-.68,.85,0],[.68,.85,0]]){
-    const pivot = new THREE.Group(); pivot.position.set(x,.32,z); pivot.userData.baseY=.32; g.add(pivot);
-    const tire = mesh(CYL(24), tireM, 0,0,0, 0,0,Math.PI/2, .36,.36,.27); pivot.add(tire);
-    const hub = mesh(CYL(12), hubM, 0,0,0, 0,0,Math.PI/2, .17,.17,.29); pivot.add(hub);
-    for(let k=0;k<5;k++){ // radios de la llanta
-      const sp = mesh(BOX(), M(col,{roughness:.4}), 0,0,0, k*Math.PI/5,0,0, .05,.3,.3);
+  for(const [x,z,front] of [[-.85,-.6,1],[.85,-.6,1],[-.85,.85,0],[.85,.85,0]]){
+    const pivot = new THREE.Group(); pivot.position.set(x,.55,z); pivot.userData.baseY=.55; g.add(pivot);
+    const tire = mesh(CYL(24), tireM, 0,0,0, 0,0,Math.PI/2, .55,.55,.42); pivot.add(tire);
+    const hub = mesh(CYL(12), hubM, 0,0,0, 0,0,Math.PI/2, .26,.26,.44); pivot.add(hub);
+    for(let k=0;k<5;k++){ // radios de la llanta con el color del kart
+      const sp = mesh(BOX(), M(col,{roughness:.4}), 0,0,0, k*Math.PI/5,0,0, .06,.46,.46);
       pivot.add(sp);
     }
     wheels.push({pivot, tire, front:!!front});
@@ -639,8 +639,8 @@ export function buildKart(colorIdx=0, marine=false){
   return { group:g, wheels, steering: wheel };
 }
 export function mountDinoOnKart(dinoGroup, kartGroup, dinoId){
-  // El dino va sentado sobre el asiento, alto para que se vea entero
-  dinoGroup.position.set(0,.62,.35);
+  // El dino va sentado sobre el asiento alto, entero y visible
+  dinoGroup.position.set(0,.85,.35);
   const s = dinoId==='braqui' ? .85 : dinoId==='ptera' ? .9 : .95;
   dinoGroup.scale.setScalar(s);
   kartGroup.add(dinoGroup);
@@ -1368,6 +1368,46 @@ function updateBursts(dt){
   pos.needsUpdate=true;
 }
 
+/* LLAMITAS de dibujo animado tras las ruedas (pool reutilizable).
+   Naranja/amarillo/rosa-azul, nada realista. Máx. 40 jugador / 12 rival. */
+const FLAME_COLS=[new THREE.Color(0xff9a3d),new THREE.Color(0xffd93b),new THREE.Color(0xff6fa2),new THREE.Color(0x6fc4ff)];
+function makeFlames(scene, max){
+  _dotTex=_dotTex||dotTexture();
+  const pos=new Float32Array(max*3), col=new Float32Array(max*3), life=new Float32Array(max), vel=new Float32Array(max*3);
+  for(let i=0;i<max;i++) pos[i*3+1]=-60;
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col,3));
+  const mat=new THREE.PointsMaterial({size:.8,map:_dotTex,transparent:true,opacity:.9,depthWrite:false,blending:THREE.AdditiveBlending,vertexColors:true});
+  const pts=new THREE.Points(geo,mat); pts.frustumCulled=false; scene.add(pts);
+  return {pts,life,vel,max,head:0};
+}
+function flameAt(pool,x,y,z,n=2,spread=1.6){
+  if(!pool) return;
+  const pos=pool.pts.geometry.attributes.position, col=pool.pts.geometry.attributes.color;
+  for(let k=0;k<n;k++){
+    const i=pool.head=(pool.head+1)%pool.max;
+    pos.setXYZ(i,x+rand(-.4,.4),y+rand(0,.2),z+rand(-.2,.3));
+    pool.vel[i*3]=rand(-spread,spread); pool.vel[i*3+1]=rand(1,3); pool.vel[i*3+2]=rand(1.5,4);
+    const c=FLAME_COLS[(Math.random()*FLAME_COLS.length)|0];
+    col.setXYZ(i,c.r,c.g,c.b);
+    pool.life[i]=1;
+  }
+  col.needsUpdate=true;
+}
+function updateFlames(pool,dt){
+  if(!pool) return;
+  const pos=pool.pts.geometry.attributes.position;
+  for(let i=0;i<pool.max;i++){
+    if(pool.life[i]>0){
+      pool.life[i]-=dt*3.2; // estela corta que se apaga rápido
+      pos.setXYZ(i,pos.getX(i)+pool.vel[i*3]*dt,pos.getY(i)+pool.vel[i*3+1]*dt,pos.getZ(i)+pool.vel[i*3+2]*dt);
+      if(pool.life[i]<=0) pos.setY(i,-60);
+    }
+  }
+  pos.needsUpdate=true;
+}
+
 /* ============================================================
    JUEGO PRINCIPAL
    ============================================================ */
@@ -1438,8 +1478,10 @@ function startRace(){
     const r = makePlayer(other.id, (di+4+i)%8);
     r.rig.position.set(i===0?-3.4:3.4, 0, 4-i*4);
     scene.add(r.rig);
+    try{ r.flames=makeFlames(scene,12); }catch{} // menos partículas en rivales
     rivals.push({ ...r, z:4-i*4, x:i===0?-3.4:3.4, spd:13.5+i*0.9, wob:Math.random()*9 });
   }
+  try{ player.flames=makeFlames(scene,40); }catch{}
   Object.assign(state,{speed:0,x:0,y:0,vy:0,z:10,targetX:0,eggs:0,stars:0,points:0,rowsDone:{},ms50:false,ms90:false,hits:0,time:0,slowT:0,invT:0,finished:false});
   setHUD(true); updateHUD(track);
   // cuenta atrás 3-2-1-¡YA!
@@ -1537,7 +1579,7 @@ function animDino(p, t, dt, extra={}){
   p.dino.scale.setScalar(p.dino.userData.s0||(p.dino.userData.s0=p.dino.scale.x));
   const s0=p.dino.userData.s0;
   p.dino.scale.set(s0*(1+.012*breathe-sq*.06+air*.05), s0*(1+.018*breathe-sq*.1+air*.09), s0*(1+.012*breathe-sq*.06+air*.02));
-  p.dino.position.y = .62 + Math.abs(Math.sin(t*9))*.05*(spd/14) + sq*-.06;
+  p.dino.position.y = .85 + Math.abs(Math.sin(t*9))*.05*(spd/14) + sq*-.06;
   p.dino.rotation.z = Math.sin(t*5)*.03 - steer*.14;
   p.dino.rotation.y = -steer*.3;
   p.dino.rotation.x = air*.22 - sq*.12; // morro arriba al saltar, agachado al caer
@@ -1597,6 +1639,13 @@ function animDino(p, t, dt, extra={}){
   if(P.legR) P.legR.rotation.x = -Math.sin(t*11)*.5*(spd/16);
   if(P.armL&&id!=='ptera') P.armL.rotation.x = .8+Math.sin(t*11)*.2;
   if(P.armR&&id!=='ptera') P.armR.rotation.x = .8-Math.sin(t*11)*.2;
+  // MIRADA ATRÁS en el salto: la cabeza gira hacia la cámara (corta y graciosa).
+  // Solo gira la cabeza: en el braquiosaurio el cuello no se mueve ni atraviesa el kart.
+  const lb = extra.lookBack||0;
+  if(lb>0){
+    const hg = (P.headG&&P.headG.isGroup) ? P.headG : (P.head&&P.head.isGroup ? P.head : null);
+    if(hg){ hg.rotation.y += lb*2.4; hg.rotation.z += lb*.3; hg.rotation.x += lb*-.25; }
+  }
   // ruedas + suspensión del kart (sigue girando siempre)
   const spin = spd*dt*2.2;
   p.kart.wheels.forEach((w,i)=>{
@@ -1646,9 +1695,12 @@ function loop(){
     state.jumpPeak=Math.max(state.jumpPeak||0,state.y);
     if(state.y<0){
       state.y=0;
-      if(state.vy<-7){ player.parts._squash=1; music.beep(220,.12,'sine',.1); } // aterrizaje suave
+      if(state.vy<-7){ player.parts._squash=1; music.beep(220,.12,'sine',.1);
+        flameAt(player.flames,state.x,.4,state.z+1.2,8,2.5); } // chispazo al aterrizar
       state.vy=0;
     }
+    // mirada atrás en el salto: aparece y desaparece suavemente (corta y graciosa)
+    state.lookBack = state.y>0.3 ? Math.min(1,(state.lookBack||0)+dt*4) : Math.max(0,(state.lookBack||0)-dt*3);
     // velocidad (slow temporal tras choque, sin castigo duro)
     state.slowT=Math.max(0,state.slowT-dt); state.invT=Math.max(0,state.invT-dt);
     const spd = (state.slowT>0?9:state.baseSpeed);
@@ -1658,7 +1710,10 @@ function loop(){
     player.rig.position.set(state.x, state.y, state.z);
     player.rig.rotation.y = -steer*.18;
     player.rig.rotation.z = -steer*.08;
-    animDino(player, elapsed, dt, {speed:state.speed, steer, airY:state.y});
+    animDino(player, elapsed, dt, {speed:state.speed, steer, airY:state.y, lookBack:state.lookBack||0});
+    // llamitas tras las ruedas al acelerar o derrapar (casi nada a baja velocidad)
+    if(state.speed>12) flameAt(player.flames,state.x,.4,state.z+1.4,Math.abs(steer)>.6?3:1);
+    updateFlames(player.flames,dt);
     // rugidos aleatorios mientras conduce (espaciados, nunca molestos)
     state.roarCd=(state.roarCd??12)-dt;
     if(state.roarCd<=0){ dinoRoar(player,.65); state.roarCd=14+Math.random()*12; }
@@ -1668,6 +1723,8 @@ function loop(){
       r.x += Math.sin(r.wob)*dt*1.2; r.x=Math.max(-5,Math.min(5,r.x));
       r.rig.position.set(r.x, Math.abs(Math.sin(r.wob*2))*.1, r.z);
       animDino(r, elapsed+r.wob, dt, {speed:r.spd, steer:Math.sin(r.wob)*.3});
+      if(r.spd>11&&Math.random()<.3) flameAt(r.flames,r.x,.4,r.z+1.4,1);
+      updateFlames(r.flames,dt);
     }
     // obstáculos
     for(const o of ents.obstacles){
