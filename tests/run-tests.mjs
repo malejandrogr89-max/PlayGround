@@ -28,6 +28,8 @@ check('juguete blando: ojos grandes (EYE_BIG)', js.includes('EYE_BIG = 1.45'));
 check('estrellas-premio: 20 fijas, brillo, partículas, +10 pts y reinicio', js.includes('ESTRELLAS-PREMIO') && js.includes('makeBursts') && js.includes('burstAt(') && js.includes('state.points') && js.includes('points:0'));
 check('meta con celebración (confeti + fanfarria + rugido)', js.includes('confetti') && js.includes('fanfare') && js.includes('dinoRoar'));
 check('rugidos por especie sincronizados con mandíbula', js.includes('ROAR_VOICE') && js.includes('_roarT') && js.includes('roar('));
+check('rugido gruñido-grave: sierra 60-120Hz + AM 20-40Hz + ruido + paso bajo', js.includes("type='sawtooth'") && js.includes('createBuffer') && js.includes("type='lowpass'") && js.includes('bububu'));
+check('rugidos: sin solape + auto-resume + volúmenes por defecto 0.5/0.8', js.includes('_roarLock') && js.includes('visibilitychange') && js.includes(':0.5') && js.includes(':0.8')); 
 check('menús: selección 3D giratoria + pausa + reinicio + final', js.includes('showPreview') && js.includes('pauseGame') && js.includes('startRace') && html.includes('screen-finish'));
 check('cámara tercera persona (sigue al kart por detrás)', js.includes('lookAt') && js.includes('camera.position.lerp') && js.includes('state.z+9'));
 check('música procedural + mute + volúmenes independientes', js.includes('startMusic') && html.includes('btn-mute') && js.includes('setMusicVol') && js.includes('setSfxVol'));
