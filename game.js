@@ -880,12 +880,12 @@ class MusicBox {
       if(!this.playing||!this.ctx) return;
       if(!this.muted){
         const i=this.step%mel.length, n=mel[i];
-        if(n) this.mallet(n,.55,.085,.22);                       // marimba
-        if(i%2===0&&n) this.mallet(n*2,.4,.028,.3);              // xilófono suave arriba
+        if(n) this.mallet(n,.55,.085,.15);                       // marimba (menos brillo >4kHz)
+        if(i%2===0&&n) this.mallet(n*2,.4,.028,.2);              // xilófono suave arriba
         const b=bass[(this.step>>1)%bass.length];
         if(b) this.mallet(b,1.1,.06,.08);                        // bajo redondo
-        if(i%16===12) this.bell(1568,.035);                      // campanilla discreta
-        if(i%32===28) this.bell(1319,.03);
+        if(i%16===12) this.bell(1568,.03);                       // campanilla discreta
+        if(i%32===28) this.bell(1319,.025);
       }
       this.step++;
     };

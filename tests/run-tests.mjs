@@ -25,6 +25,8 @@ check('4 circuitos en TRACKS', (js.match(/id:'(jungla|desierto|valle|volcan)'/g)
 check('mando Xbox (Gamepad API: stick/cruceta/A/Start)', js.includes('getGamepads') && js.includes('buttons[14]') && js.includes('buttons[15]') && js.includes('buttons[0]') && js.includes('buttons[9]'));
 check('teclado (flechas/espacio/escape)', js.includes('ArrowLeft') && js.includes('ArrowRight') && js.includes("code==='Space'") && js.includes("code==='Escape'"));
 check('kart con 4 ruedas que giran', js.includes('kartWheels') || (js.includes('wheels') && js.includes('tire.rotation')));
+check('G música suave: brillo reducido + campanillas discretas', js.includes('menos brillo') && js.includes('campanilla discreta'));
+check('G persistencia de sliders', js.includes('dr3d_mus') && js.includes('dr3d_sfx'));
 check('F medalla 1-3 según estrellas + total animado', js.includes('MEDALLA') && js.includes('_countIv') && js.includes('stat pts'));
 check('F hitos 50/90% con rugido contento y cartel con icono', js.includes('mile50') && js.includes('mile90') && js.includes('¡Muy bien!') && js.includes('¡Casi llegas!'));
 check('E ejes: troncos verticales (eje Y) y copas hacia arriba', !js.includes('.28,.28,2.2') && js.includes('.28,2.2,.28') && js.includes('setFromUnitVectors'));
