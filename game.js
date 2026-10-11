@@ -1053,6 +1053,7 @@ export function buildWorld(scene, track){
   const tex=new THREE.CanvasTexture(txt);
   meta.add(mesh(new THREE.PlaneGeometry(10,1.6), new THREE.MeshBasicMaterial({map:tex}), 0,4.6,0, 0,0,0, 1,1,1));
   dust = makeDust(scene);
+  starBursts = makeBursts(scene);
   return { LEN, clouds, meta, fx, sky };
 }
 
@@ -1080,13 +1081,55 @@ export function spawnEntities(scene, LEN){
       shell.add(mesh(SPH(8,6), M(0x8ecae6), .05,.25,-.2, 0,0,0, .1,.1,.1));
       e.userData={taken:false}; scene.add(e); eggs.push(e);
     }
-    if(Math.random()<0.6){
-      const s=new THREE.Group(); s.position.set(rand(-5,5),1.4,z-rand(2,8));
-      const star=mesh(new THREE.OctahedronGeometry(.5,0), M(0xffd43b,{emissive:0xffaa00,emissiveIntensity:.55,roughness:.3}), 0,0,0, 0,0,0, 1,1.3,1);
-      s.add(star); s.userData={taken:false,core:star}; scene.add(s); stars.push(s);
-    }
+  }
+  // ESTRELLAS-PREMIO: exactamente 20 por circuito, en la trazada, reparto uniforme
+  _dotTex=_dotTex||dotTexture();
+  for(let i=0;i<20;i++){
+    const s=new THREE.Group();
+    const z=-70-i*(LEN-150)/19, x=Math.sin(i*1.7)*4.2;
+    s.position.set(x,1.4,z);
+    const star=mesh(new THREE.OctahedronGeometry(.62,0), M(0xffd43b,{emissive:0xffaa00,emissiveIntensity:.75,roughness:.25}), 0,0,0, 0,0,0, 1,1.3,1);
+    s.add(star);
+    const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:_dotTex,color:0xffe27a,transparent:true,opacity:.85,depthWrite:false,blending:THREE.AdditiveBlending}));
+    glow.scale.set(2.6,2.6,1); s.add(glow);
+    s.userData={taken:false,core:star,glow,ph:i*.7}; scene.add(s); stars.push(s);
   }
   return { obstacles, eggs, stars };
+}
+/* destellos al recoger estrellas (pool reciclado de motas doradas) */
+let starBursts=null;
+function makeBursts(scene){
+  _dotTex=_dotTex||dotTexture();
+  const count=90, pos=new Float32Array(count*3), vel=new Float32Array(count*3), life=new Float32Array(count);
+  for(let i=0;i<count;i++){ pos[i*3+1]=-60; }
+  const geo=new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  const mat=new THREE.PointsMaterial({color:0xffd94d,size:1.0,map:_dotTex,transparent:true,opacity:.95,depthWrite:false,blending:THREE.AdditiveBlending});
+  const pts=new THREE.Points(geo,mat); pts.frustumCulled=false; scene.add(pts);
+  return {pts,vel,life,count,head:0};
+}
+function burstAt(x,y,z,n=14){
+  if(!starBursts) return;
+  const pos=starBursts.pts.geometry.attributes.position;
+  for(let k=0;k<n;k++){
+    const i=starBursts.head=(starBursts.head+1)%starBursts.count;
+    pos.setXYZ(i,x,y,z);
+    const a=Math.random()*Math.PI*2, r=2+Math.random()*4;
+    starBursts.vel[i*3]=Math.cos(a)*r; starBursts.vel[i*3+1]=2+Math.random()*4; starBursts.vel[i*3+2]=Math.sin(a)*r;
+    starBursts.life[i]=1;
+  }
+}
+function updateBursts(dt){
+  if(!starBursts) return;
+  const pos=starBursts.pts.geometry.attributes.position;
+  for(let i=0;i<starBursts.count;i++){
+    if(starBursts.life[i]>0){
+      starBursts.life[i]-=dt*1.8;
+      starBursts.vel[i*3+1]-=9*dt;
+      pos.setXYZ(i,pos.getX(i)+starBursts.vel[i*3]*dt,pos.getY(i)+starBursts.vel[i*3+1]*dt,pos.getZ(i)+starBursts.vel[i*3+2]*dt);
+      if(starBursts.life[i]<=0) pos.setY(i,-60);
+    }
+  }
+  pos.needsUpdate=true;
 }
 
 /* ============================================================
@@ -1161,7 +1204,7 @@ function startRace(){
     scene.add(r.rig);
     rivals.push({ ...r, z:4-i*4, x:i===0?-3.4:3.4, spd:13.5+i*0.9, wob:Math.random()*9 });
   }
-  Object.assign(state,{speed:0,x:0,y:0,vy:0,z:10,targetX:0,eggs:0,stars:0,hits:0,time:0,slowT:0,invT:0,finished:false});
+  Object.assign(state,{speed:0,x:0,y:0,vy:0,z:10,targetX:0,eggs:0,stars:0,points:0,hits:0,time:0,slowT:0,invT:0,finished:false});
   setHUD(true); updateHUD(track);
   // cuenta atrás 3-2-1-¡YA!
   state.mode='countdown'; show('screen-countdown');
@@ -1210,7 +1253,7 @@ function finishRace(){
   const nstars = state.hits===0&&state.time<90 ? 3 : state.hits<=3 ? 3 : state.hits<=6 ? 2 : 2;
   $('finish-text').textContent = `¡${player.def.name} cruzó la meta! ${player.def.emoji}🎉`;
   $('finish-stats').innerHTML =
-    `<div class="stat">⏱️ ${state.time.toFixed(1)}s</div><div class="stat">🥚 ${state.eggs}</div><div class="stat">⭐ ${state.stars}</div><div class="stat">🏆 ${score} pts</div>`;
+    `<div class="stat">⏱️ ${state.time.toFixed(1)}s</div><div class="stat">🥚 ${state.eggs}</div><div class="stat">⭐ ${state.stars}</div><div class="stat">✨ ${state.points||0} pts</div><div class="stat">🏆 ${score} pts</div>`;
   $('finish-stars').textContent = '⭐'.repeat(nstars);
   domConfetti($('screen-finish'));
   setTimeout(()=>{ show('screen-finish'); }, 1800);
@@ -1406,12 +1449,18 @@ function loop(){
     }
     for(const s of ents.stars){
       if(s.userData.taken) continue;
-      s.rotation.y+=dt*3; s.position.y=1.4+Math.sin(elapsed*3+s.position.x)*.2;
+      s.rotation.y+=dt*3; s.position.y=1.4+Math.sin(elapsed*3+s.userData.ph)*.25;
+      s.userData.glow.material.opacity=.65+Math.sin(elapsed*5+s.userData.ph)*.25;
       const dz=s.position.z-state.z, dx=s.position.x-state.x, dy=(s.position.y)-(state.y+1.2);
-      if(Math.abs(dz)<2&&Math.abs(dx)<2&&Math.abs(dy)<2.4){ s.userData.taken=true; s.visible=false; state.stars++; music.star(); dinoRoar(player,.7); toast('⭐ ¡Estrella! ¡Genial!'); }
+      if(Math.abs(dz)<2.2&&Math.abs(dx)<2.2&&Math.abs(dy)<2.6){
+        s.userData.taken=true; s.visible=false; state.stars++; state.points=(state.points||0)+10;
+        music.star(); music.bell(1568,.06); dinoRoar(player,.7);
+        burstAt(s.position.x,s.position.y,s.position.z);
+        toast('⭐ ¡Estrella! +10');
+      }
     }
     updateHUD();
-    updateDust(dt);
+    updateDust(dt); updateBursts(dt);
     if(world.fx) updateFx(world.fx, dt, elapsed);
     if(world.sky) world.sky.position.set(state.x, 0, state.z-60);
     // cámara en tercera persona: suave, con leve FOV de velocidad (sin mareos)
@@ -1593,4 +1642,4 @@ function wireUI(){
 wireUI();
 
 // gancho para pruebas automatizadas
-window.__DINO_RACE__ = { DINOS, TRACKS, DINO_BUILDERS, buildDinosaur, buildKart, buildWorld, spawnEntities, Input, state, music, dinoRoar, animDino, THREE };
+window.__DINO_RACE__ = { DINOS, TRACKS, DINO_BUILDERS, buildDinosaur, buildKart, buildWorld, spawnEntities, Input, state, music, dinoRoar, animDino, getEnts:()=>ents, THREE };
