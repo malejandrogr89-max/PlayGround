@@ -22,10 +22,10 @@ export const DINOS = [
 ];
 
 export const TRACKS = [
-  { id:'jungla',  name:'Jungla Verde',   emoji:'🌴', len:1100, sky:0x87d7f5, fog:0xaee6c8, ground:0x55b04e, road:0xd9b382, edge:0x3e8f3e, desc:'Árboles, lianas y monitos. ¡Fácil y alegre!' },
-  { id:'desierto',name:'Desierto Sol',   emoji:'🌵', len:1250, sky:0xffd9a3, fog:0xf7cf9a, ground:0xeec25e, road:0xc98d4e, edge:0xb4763a, desc:'Cactus, dunas y solecito. ¡Ponte gafas!' },
-  { id:'valle',   name:'Valle Florido',  emoji:'🌸', len:1400, sky:0xa8e6ff, fog:0xc4ecff, ground:0x7ed957, road:0x9c7b54, edge:0x5da33f, desc:'Flores, río y arcoíris. ¡El más bonito!' },
-  { id:'volcan',  name:'Volcán Chispa',  emoji:'🌋', len:1550, sky:0x4a3560, fog:0x6b4a7a, ground:0x6e5a6e, road:0x4a4a55, edge:0xff6b35, desc:'Lava que no quema, rocas y chispas. ¡Emoción!' },
+  { id:'jungla',  name:'Jungla Verde',   emoji:'🌴', len:2000, sky:0x87d7f5, fog:0xaee6c8, ground:0x55b04e, road:0xd9b382, edge:0x3e8f3e, desc:'Árboles, lianas y monitos. ¡Fácil y alegre!' },
+  { id:'desierto',name:'Desierto Sol',   emoji:'🌵', len:2150, sky:0xffd9a3, fog:0xf7cf9a, ground:0xeec25e, road:0xc98d4e, edge:0xb4763a, desc:'Cactus, dunas y solecito. ¡Ponte gafas!' },
+  { id:'valle',   name:'Valle Florido',  emoji:'🌸', len:2300, sky:0xa8e6ff, fog:0xc4ecff, ground:0x7ed957, road:0x9c7b54, edge:0x5da33f, desc:'Flores, río y arcoíris. ¡El más bonito!' },
+  { id:'volcan',  name:'Volcán Chispa',  emoji:'🌋', len:2500, sky:0x4a3560, fog:0x6b4a7a, ground:0x6e5a6e, road:0x4a4a55, edge:0xff6b35, desc:'Lava que no quema, rocas y chispas. ¡Emoción!' },
 ];
 
 // ---------- helpers ----------
@@ -1314,7 +1314,7 @@ function startRace(){
     scene.add(r.rig);
     rivals.push({ ...r, z:4-i*4, x:i===0?-3.4:3.4, spd:13.5+i*0.9, wob:Math.random()*9 });
   }
-  Object.assign(state,{speed:0,x:0,y:0,vy:0,z:10,targetX:0,eggs:0,stars:0,points:0,rowsDone:{},hits:0,time:0,slowT:0,invT:0,finished:false});
+  Object.assign(state,{speed:0,x:0,y:0,vy:0,z:10,targetX:0,eggs:0,stars:0,points:0,rowsDone:{},ms50:false,ms90:false,hits:0,time:0,slowT:0,invT:0,finished:false});
   setHUD(true); updateHUD(track);
   // cuenta atrás 3-2-1-¡YA!
   state.mode='countdown'; show('screen-countdown');
@@ -1595,6 +1595,10 @@ function loop(){
     }
     updateHUD();
     updateDust(dt); updateBursts(dt);
+    // hitos de carrera al 50 % y 90 % (proporcionales a cada circuito)
+    const prog=(10-state.z)/world.LEN;
+    if(prog>=.5&&!state.ms50){ state.ms50=true; toast('🎉 ¡Mitad del camino! ¡Genial!'); music.bell(1319,.05); }
+    if(prog>=.9&&!state.ms90){ state.ms90=true; toast('🏁 ¡Casi en la meta! ¡Tú puedes!'); music.bell(1568,.05); }
     if(world.fx) updateFx(world.fx, dt, elapsed);
     if(world.sky) world.sky.position.set(state.x, 0, state.z-60);
     // cámara en tercera persona: suave, con leve FOV de velocidad (sin mareos)
