@@ -722,6 +722,8 @@ class MusicBox {
   jump(){ this.beep(400,.18,'square',.14); this.beep(700,.2,'square',.12,.08); }
   egg(){ this.beep(880,.12,'sine',.16); this.beep(1320,.15,'sine',.14,.07); }
   star(){ [660,830,990,1320].forEach((f,i)=>this.beep(f,.14,'triangle',.15,i*.07)); }
+  /* "¡yuju!" muy suave del público (bus de efectos, con enfriamiento) */
+  cheer(){ this.beep(659,.16,'sine',.12); this.beep(784,.22,'sine',.12,.12); }
   /* hilera completa: do-re-mi-sol ascendente y alegre (bus de efectos) */
   arpeggio(){ [523,587,659,784].forEach((f,i)=>this.beep(f,.22,'triangle',.18,i*.11)); }
   /* silbato deslizante gracioso para el giro de choque (suave, nada estridente) */
@@ -1105,7 +1107,56 @@ export function themeProps(scene, track, LEN){
       fx.ducks.push({g:dk,t:rand(0,9),cz:-LEN*.55}); biome.duck++;
     }
   }
+  // PÚBLICO ANIMANDO: bebés dino a los lados, SIEMPRE fuera del asfalto
+  // (|x|>=9.5, detrás de los pianos) y SIN colisión (nunca entran en obstacles).
+  // 3-6 por grupo, densos en salida, meta y rectas. Todo instanciado.
+  const crowd=[];
+  const addGroup=(z,s)=>{
+    const n=3+((Math.random()*4)|0), gx=s*rand(10.5,14);
+    for(let k=0;k<n;k++) crowd.push({x:gx+rand(-1,1), z:z-rand(0,7), ph:rand(0,9), sp:(Math.random()*DINOS.length)|0});
+  };
+  for(let z=-15;z>-95;z-=rand(18,28)) for(const s of [-1,1]) addGroup(z,s); // salida
+  for(let z=-LEN+95;z>-LEN+15;z-=rand(18,28)) for(const s of [-1,1]){ if(Math.random()<.3) continue; addGroup(z,s); } // meta
+  let flip=1;
+  for(let z=-260;z>-LEN+140;z-=rand(220,300)){ addGroup(z,flip); flip*=-1; } // rectas
+  {
+    const NB=crowd.length, white=M(0xffffff,{roughness:.5}), dark=M(0x2b2b3a,{roughness:.4});
+    const bodyIM=new THREE.InstancedMesh(new THREE.SphereGeometry(.45,12,10), M(0xffffff,{roughness:.7}), NB);
+    const headIM=new THREE.InstancedMesh(new THREE.SphereGeometry(.3,12,10), M(0xffffff,{roughness:.7}), NB);
+    const eyeIM=new THREE.InstancedMesh(new THREE.SphereGeometry(.09,8,6), white, NB*2);
+    const pupIM=new THREE.InstancedMesh(new THREE.SphereGeometry(.045,8,6), dark, NB*2);
+    const C=new THREE.Color();
+    crowd.forEach((c,i)=>{
+      C.set(DINOS[c.sp%DINOS.length].color).lerp(new THREE.Color(0xffffff),.15);
+      bodyIM.setColorAt(i,C); headIM.setColorAt(i,C);
+      setCrowdPose(c, 0, 0, 0, bodyIM, headIM, eyeIM, pupIM, i);
+    });
+    for(const m of [bodyIM,headIM,eyeIM,pupIM]){ m.instanceMatrix.needsUpdate=true; if(m.instanceColor) m.instanceColor.needsUpdate=true; m.castShadow=false; grp.add(m); }
+    fx.crowd={list:crowd,bodyIM,headIM,eyeIM,pupIM,cd:0};
+    biome.crowd=NB;
+  }
   return {grp, fx, biome};
+}
+/* coloca un bebé (cuerpo+cabeza+ojos) mirando a la pista, con saltito y guiño */
+const _cd=new THREE.Object3D();
+function setCrowdPose(c, jump, yaw, t, bodyIM, headIM, eyeIM, pupIM, i){
+  _cd.position.set(c.x,.45+jump,c.z); _cd.rotation.set(0,0,0);
+  _cd.scale.set(1,1+Math.sin(t*6+c.ph)*.06,1); _cd.updateMatrix();
+  bodyIM.setMatrixAt(i,_cd.matrix);
+  const side=c.x>0?1:-1;
+  const fx0=-side*Math.cos(yaw), fz=side*Math.sin(yaw); // mirada (base: hacia la pista)
+  const hx=c.x+fx0*.38, hy=.95+jump*1.2, hz=c.z+fz*.38;
+  _cd.position.set(hx,hy,hz); _cd.rotation.set(0,Math.atan2(fx0,fz),0);
+  _cd.scale.set(1,1,1); _cd.updateMatrix();
+  headIM.setMatrixAt(i,_cd.matrix);
+  for(let e=0;e<2;e++){
+    const s=e?1:-1, px=-fz*s*.13, pz=fx0*s*.13; // perpendicular
+    _cd.position.set(hx+fx0*.24+px,hy+.04,hz+fz*.24+pz);
+    _cd.rotation.set(0,0,0); _cd.scale.set(1,1,1); _cd.updateMatrix();
+    eyeIM.setMatrixAt(i*2+e,_cd.matrix);
+    _cd.position.set(hx+fx0*.3+px,hy+.05,hz+fz*.3+pz); _cd.updateMatrix();
+    pupIM.setMatrixAt(i*2+e,_cd.matrix);
+  }
 }
 
 /* chispas / motas flotantes (Points reciclados, baratos) */
@@ -1158,7 +1209,7 @@ function updateDust(dt){
   pos.needsUpdate=true;
 }
 /* anima vegetación (brisa), lava, río y chispas */
-function updateFx(fx, dt, t){
+function updateFx(fx, dt, t, px=0, pz=0, cheerOK=false){
   if(!fx) return;
   for(const s of fx.swayers) s.o.rotation.z = Math.sin(t*1.4+s.ph)*s.amt;
   fx.lavaMats?.forEach((m,i)=>{ m.emissiveIntensity = .9+Math.sin(t*3+i*1.3)*.35; });
@@ -1203,6 +1254,24 @@ function updateFx(fx, dt, t){
     gy.t+=dt; const c=(gy.t%6)/6, jet=gy.jet;
     const h=c<.25?Math.sin(c/ .25*Math.PI):0;
     jet.scale.set(1,.15+h,1); jet.position.y=.5+2.5*(.15+h);
+  }
+  const cr=fx.crowd;
+  if(cr){ // público: solo los cercanos saltan y miran al kart (barato)
+    cr.cd=Math.max(0,cr.cd-dt);
+    let dirty=false, nearCheer=false;
+    for(let i=0;i<cr.list.length;i++){
+      const c=cr.list[i], dz=c.z-pz;
+      if(Math.abs(dz)>60||Math.abs(c.x-px)>30) continue;
+      const jump=Math.abs(Math.sin(t*3+c.ph))*.22;
+      const want=Math.max(-.6,Math.min(.6,(pz-c.z)*.04)); // cabeza sigue al kart
+      c.yaw=((c.yaw||0)+ (want-(c.yaw||0))*Math.min(1,dt*4));
+      setCrowdPose(c,jump,c.yaw,t,cr.bodyIM,cr.headIM,cr.eyeIM,cr.pupIM,i);
+      dirty=true;
+      if(cheerOK&&Math.abs(dz)<18) nearCheer=true;
+    }
+    if(dirty){ cr.bodyIM.instanceMatrix.needsUpdate=true; cr.headIM.instanceMatrix.needsUpdate=true;
+      cr.eyeIM.instanceMatrix.needsUpdate=true; cr.pupIM.instanceMatrix.needsUpdate=true; }
+    if(nearCheer&&cheerOK&&cr.cd<=0){ cr.cd=8; try{music.cheer();}catch{} }
   }
 }
 
@@ -1272,13 +1341,13 @@ export function buildWorld(scene, track){
   meta.add(mesh(new THREE.PlaneGeometry(10,1.6), new THREE.MeshBasicMaterial({map:tex}), 0,4.6,0, 0,0,0, 1,1,1));
   dust = makeDust(scene);
   starBursts = makeBursts(scene);
-  // RAYOS DE SOL: 3 planos aditivos que siguen al jugador (baratos, sin postproceso)
+  // RAYOS DE SOL: 2 planos aditivos finos que siguen al jugador (baratos, sin postproceso)
   _dotTex=_dotTex||dotTexture();
   const rays=[];
-  for(let i=0;i<3;i++){
-    const rm=new THREE.Mesh(new THREE.PlaneGeometry(7,34),
-      new THREE.MeshBasicMaterial({map:_dotTex,color:0xfff3c4,transparent:true,opacity:.10,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,fog:false}));
-    rm.rotation.set(.3,0,.35+i*.25); rm.renderOrder=5;
+  for(let i=0;i<2;i++){
+    const rm=new THREE.Mesh(new THREE.PlaneGeometry(5,22),
+      new THREE.MeshBasicMaterial({map:_dotTex,color:0xfff3c4,transparent:true,opacity:.08,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,fog:false}));
+    rm.rotation.set(.3,0,.35+i*.3); rm.renderOrder=5;
     scene.add(rm); rays.push(rm);
   }
   return { LEN, clouds, meta, fx, sky, biome, rays, deco:decoGrp };
@@ -1849,7 +1918,7 @@ function loop(){
     const prog=(10-state.z)/world.LEN;
     if(prog>=.5&&!state.ms50){ state.ms50=true; toast('🎉 ¡Mitad del camino! ¡Genial!'); music.bell(1319,.05); }
     if(prog>=.9&&!state.ms90){ state.ms90=true; toast('🏁 ¡Casi en la meta! ¡Tú puedes!'); music.bell(1568,.05); }
-    if(world.fx) updateFx(world.fx, dt, elapsed);
+    if(world.fx) updateFx(world.fx, dt, elapsed, state.x, state.z, true);
     if(world.sky) world.sky.position.set(state.x, 0, state.z-60);
     if(world.rays) for(let i=0;i<world.rays.length;i++){ const r=world.rays[i]; r.position.set(state.x-4+i*4, 12, state.z-22); }
     // LOD barato: oculta el decorado a más de 130 m (se reevalúa 2 veces/s)
