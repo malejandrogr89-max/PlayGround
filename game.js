@@ -10,15 +10,15 @@ import * as THREE from 'three';
    ============================================================ */
 
 export const DINOS = [
-  { id:'trex',   name:'T. Rex',          emoji:'🦖', color:0x4caf50, belly:0xcde8b0, desc:'¡El rey fuerte con dientes grandes y bracitos!' },
-  { id:'braqui', name:'Braquiosaurio',   emoji:'🦕', color:0x7bb661, belly:0xe8f0c8, desc:'¡Cuello larguísimo para verlo todo desde arriba!' },
-  { id:'trice',  name:'Tricerátops',     emoji:'🦏', color:0x6fa8dc, belly:0xd6e9ff, desc:'¡Tres cuernos y un escudo genial en la cabeza!' },
-  { id:'velo',   name:'Velociraptor',    emoji:'🦅', color:0xef6c3d, belly:0xffe0b8, desc:'¡Rapidísimo, con plumas y una garra curva!' },
-  { id:'stego',  name:'Estegosaurio',    emoji:'🦎', color:0x9b7ede, belly:0xe6dcff, desc:'¡Placas en la espalda y cola con pinchos!' },
-  { id:'anky',   name:'Anquilosaurio',   emoji:'🐢', color:0xb08954, belly:0xf0dfb8, desc:'¡Armadura de tortuga y cola con maza!' },
-  { id:'para',   name:'Parasaurolophus', emoji:'🦆', color:0x3ec6b8, belly:0xd2f7f0, desc:'¡Cresta trompeta para cantar mientras corre!' },
-  { id:'ptera',  name:'Pteranodon',      emoji:'🦅', color:0xf2a7c3, belly:0xffe3ef, desc:'¡Alas grandes y pico volador, el rey del cielo!' },
-  { id:'tiburon',name:'Tiburón',           emoji:'🦈', color:0x3aa7e0, belly:0xe8f6ff, desc:'¡Aletas, sonrisas y burbujas en su kart marino!' },
+  { id:'trex',   name:'T. Rex',          emoji:'🦖', color:0x66cf7e, belly:0xdcf2c4, desc:'¡El rey fuerte con dientes grandes y bracitos!' },
+  { id:'braqui', name:'Braquiosaurio',   emoji:'🦕', color:0x8fd07a, belly:0xeef5d2, desc:'¡Cuello larguísimo para verlo todo desde arriba!' },
+  { id:'trice',  name:'Tricerátops',     emoji:'🦏', color:0x8abdff, belly:0xe0efff, desc:'¡Tres cuernos y un escudo genial en la cabeza!' },
+  { id:'velo',   name:'Velociraptor',    emoji:'🦅', color:0xff9a66, belly:0xffe6c4, desc:'¡Rapidísimo, con plumas y una garra curva!' },
+  { id:'stego',  name:'Estegosaurio',    emoji:'🦎', color:0xb49bf0, belly:0xece4ff, desc:'¡Placas en la espalda y cola con pinchos!' },
+  { id:'anky',   name:'Anquilosaurio',   emoji:'🐢', color:0xc9a06e, belly:0xf4e6c4, desc:'¡Armadura de tortuga y cola con maza!' },
+  { id:'para',   name:'Parasaurolophus', emoji:'🦆', color:0x5fd8cb, belly:0xdcfaf4, desc:'¡Cresta trompeta para cantar mientras corre!' },
+  { id:'ptera',  name:'Pteranodon',      emoji:'🦅', color:0xffbcd4, belly:0xffe9f3, desc:'¡Alas grandes y pico volador, el rey del cielo!' },
+  { id:'tiburon',name:'Tiburón',           emoji:'🦈', color:0x5cbdf0, belly:0xecf8ff, desc:'¡Aletas, sonrisas y burbujas en su kart marino!' },
 ];
 
 export const TRACKS = [
@@ -29,8 +29,16 @@ export const TRACKS = [
 ];
 
 // ---------- helpers ----------
+// Estilo "juguete blando": sombreado SUAVE (sin facetas), colores pastel vivos.
 function M(color, opts={}) {
-  return new THREE.MeshStandardMaterial({ color, roughness:.65, metalness:.05, flatShading:true, ...opts });
+  const { flatShading: _fs, ...rest } = opts; // se ignora: siempre suave
+  return new THREE.MeshStandardMaterial({ color, roughness:.55, metalness:.0, flatShading:false, ...rest });
+}
+// aclara un color hacia pastel (0..1)
+function pastel(hex, amt=.22){
+  const c = new THREE.Color(hex);
+  c.lerp(new THREE.Color(0xffffff), amt);
+  return c.getHex();
 }
 function mesh(geo, material, x=0,y=0,z=0, rx=0,ry=0,rz=0, sx=1,sy=1,sz=1){
   const m = new THREE.Mesh(geo, material);
@@ -50,6 +58,7 @@ const CONE = (s=12)=>new THREE.ConeGeometry(1,1,s);
    head, crest, wings[], plates[] para animar.
    ============================================================ */
 function baseEyes(head, x, y, z, s=0.11){
+  s *= 1.4; // ojos GRANDES y tiernos para todos
   const w = M(0xffffff,{roughness:.25}), b = M(0x2b2b3a,{roughness:.2});
   const irisCols = [0x7a4a21,0x2e7d32,0x1565c0,0x6a1b9a,0xb26a00,0x00838f,0xc2185b,0x4a6572];
   const iris = M(irisCols[(Math.random()*irisCols.length)|0],{roughness:.25});
@@ -486,8 +495,8 @@ function buildTiburon(d){
   const w = M(0xffffff,{roughness:.25}), b = M(0x223344,{roughness:.2});
   g.userData.lids = g.userData.lids||[];
   for(const s of [-1,1]){
-    const e = mesh(SPH(10,8), w, s*.34,1.18,-.5, 0,0,0, .13,.15,.1); g.add(e);
-    const p = mesh(SPH(8,6), b, s*.4,1.18,-.56, 0,0,0, .06,.075,.05); g.add(p);
+    const e = mesh(SPH(10,8), w, s*.34,1.18,-.5, 0,0,0, .16,.18,.12); g.add(e);
+    const p = mesh(SPH(8,6), b, s*.4,1.18,-.56, 0,0,0, .075,.09,.06); g.add(p);
     const hl = new THREE.Mesh(new THREE.SphereGeometry(1,8,6), new THREE.MeshBasicMaterial({color:0xffffff}));
     hl.position.set(s*.42,1.25,-.62); hl.scale.setScalar(.025); g.add(hl);
     const lid = mesh(SPH(10,8), M(0x2a6a9a), s*.34,1.2,-.52, 0,0,0, .15,.02,.12);
@@ -532,7 +541,33 @@ export function buildDinosaur(id){
   const d = DINOS.find(x=>x.id===id) || DINOS[0];
   const built = DINO_BUILDERS[d.id](d);
   try { detailDino(d.id, built.group, built.parts, d); } catch(e){}
+  try { softToyFinish(built.group, built.parts); } catch(e){}
   return { ...built, def: d };
+}
+/* acabado "juguete blando": cabezas un poco más grandes (proporción tierna)
+   + contorno suave tipo dibujo animado en la cabeza (1 malla extra por pj) */
+const _outlineMat = ()=>new THREE.MeshBasicMaterial({color:0x4a3f55, side:THREE.BackSide});
+function softToyFinish(group, P){
+  const headG = P.headG || (P.head && P.head.isGroup ? P.head : null) || P.body || null;
+  if(!headG) return;
+  if(headG.isGroup && !P.body) headG.scale.multiplyScalar(1.12);
+  // la malla más grande de la cabeza recibe un cascarón invertido = contorno
+  let big=null, bigR=0;
+  const kids = headG.isGroup ? headG.children : [headG];
+  for(const o of kids){
+    if(!o.isMesh || o.userData.isLid) continue;
+    o.geometry.computeBoundingSphere?.();
+    const r = (o.geometry.boundingSphere?.radius||0) * Math.max(o.scale.x,o.scale.y,o.scale.z);
+    if(r>bigR){ bigR=r; big=o; }
+  }
+  if(big && big.parent){
+    const shell = new THREE.Mesh(big.geometry, _outlineMat());
+    shell.position.copy(big.position); shell.rotation.copy(big.rotation);
+    shell.scale.copy(big.scale).multiplyScalar(1.07);
+    shell.castShadow = false; shell.receiveShadow = false;
+    shell.userData.isOutline = true;
+    big.parent.add(shell);
+  }
 }
 
 /* ============ KART (no tapa cabeza/cuernos/placas/cola) ============ */
@@ -836,10 +871,10 @@ export function themeProps(scene, track, LEN){
   function tree(x,z,s=1){
     const t=new THREE.Group(); t.position.set(x,0,z); t.scale.setScalar(s);
     t.add(mesh(CYL(8), M(0x7a5230,{roughness:.85}), 0,1.1,0, 0,0,0, .28,.28,2.2));
-    const leafM=M(0x2e8b3e,{roughness:.8});
+    const leafM=M(0x46c46a,{roughness:.8});
     t.add(mesh(SPH(), leafM, 0,2.8,0, 0,0,0, 1.3,1.1,1.3));
-    t.add(mesh(SPH(), M(0x3cb54e,{roughness:.8}), .7,2.3,.4, 0,0,0, .85,.75,.85));
-    t.add(mesh(SPH(), M(0x3cb54e,{roughness:.8}), -.7,2.4,-.3, 0,0,0, .8,.7,.8));
+    t.add(mesh(SPH(), M(0x62db7e,{roughness:.8}), .7,2.3,.4, 0,0,0, .85,.75,.85));
+    t.add(mesh(SPH(), M(0x62db7e,{roughness:.8}), -.7,2.4,-.3, 0,0,0, .8,.7,.8));
     t.add(mesh(SPH(8,6), M(0xff5fa2), .5,2.5,.9, 0,0,0, .14,.14,.14));
     t.add(mesh(SPH(8,6), M(0xffd43b), -.4,2.9,.7, 0,0,0, .12,.12,.12));
     fx.swayers.push({o:t, ph:Math.random()*9, amt:.02});
@@ -850,7 +885,7 @@ export function themeProps(scene, track, LEN){
     t.add(mesh(CYL(8), M(0x8a6238,{roughness:.85}), 0,1.5,0, 0,0,.08, .24,.24,3));
     for(let k=0;k<6;k++){
       const a=k*Math.PI/3;
-      t.add(mesh(CONE(6), M(0x35a04e,{roughness:.8}), Math.cos(a)*1.1,3.1,Math.sin(a)*1.1, Math.PI/2.6*Math.cos(a),0,Math.PI/2.6*Math.sin(a)+1.2, .4,1.9,.12));
+      t.add(mesh(CONE(6), M(0x55cf74,{roughness:.8}), Math.cos(a)*1.1,3.1,Math.sin(a)*1.1, Math.PI/2.6*Math.cos(a),0,Math.PI/2.6*Math.sin(a)+1.2, .4,1.9,.12));
     }
     t.add(mesh(SPH(8,6), M(0x6b4a2a), 0,2.9,0, 0,0,0, .3,.25,.3)); // cocos
     t.add(mesh(SPH(8,6), M(0x6b4a2a), .25,2.8,.1, 0,0,0, .22,.2,.22));
@@ -860,14 +895,14 @@ export function themeProps(scene, track, LEN){
   function pine(x,z,s=1){
     const t=new THREE.Group(); t.position.set(x,0,z); t.scale.setScalar(s);
     t.add(mesh(CYL(8), M(0x6b4a2a), 0,.5,0, 0,0,0, .22,.22,1));
-    const g1=M(0x2f7d3e,{roughness:.85});
+    const g1=M(0x4cae6b,{roughness:.85});
     t.add(mesh(CONE(10), g1, 0,1.6,0, 0,0,0, 1.1,1.6,1.1));
     t.add(mesh(CONE(10), g1, 0,2.6,0, 0,0,0, .8,1.3,.8));
     grp.add(t);
   }
   function cactus(x,z,s=1){
     const t=new THREE.Group(); t.position.set(x,0,z); t.scale.setScalar(s);
-    const cm=M(0x2f9e44);
+    const cm=M(0x4fc878);
     t.add(mesh(CYL(10), cm, 0,.9,0, 0,0,0, .3,.3,1.8));
     t.add(mesh(SPH(10,8), cm, 0,1.85,0, 0,0,0, .3,.3,.3));
     t.add(mesh(CYL(8), cm, -.45,.9,0, 0,0,.5, .18,.18,.8));
@@ -876,7 +911,7 @@ export function themeProps(scene, track, LEN){
   }
   function flower(x,z){
     const f=new THREE.Group(); f.position.set(x,0,z);
-    f.add(mesh(CYL(6), M(0x2e8b3e), 0,.25,0, 0,0,0, .05,.05,.5));
+    f.add(mesh(CYL(6), M(0x46c46a), 0,.25,0, 0,0,0, .05,.05,.5));
     const cols=[0xff5fa2,0xffd43b,0xff6b6b,0xc084fc,0xffffff];
     f.add(mesh(SPH(8,6), M(cols[(Math.random()*cols.length)|0]), 0,.55,0, 0,0,0, .16,.16,.16));
     grp.add(f);
@@ -892,7 +927,7 @@ export function themeProps(scene, track, LEN){
     grp.add(l); fx.lavaMats.push(lm);
     grp.add(mesh(new THREE.TorusGeometry(s,.22,8,20), M(0x3a2a33,{roughness:.95}), x,.1,z, Math.PI/2,0,0, 1,1,1)); // borde rocoso
   }
-  function tuft(x,z,c=0x3e9e3e){
+  function tuft(x,z,c=0x55c96e){
     const f=new THREE.Group(); f.position.set(x,0,z); f.rotation.y=Math.random()*6;
     for(let k=-1;k<=1;k++) f.add(mesh(CONE(5), M(c,{roughness:.9}), k*.12,.3,0, 0,0,k*.18, .09,.6,.09));
     fx.swayers.push({o:f, ph:Math.random()*9, amt:.06});
@@ -1625,7 +1660,7 @@ function wireUI(){
     const t=new THREE.Group(); t.position.set(px,0,pz); t.scale.setScalar(ps);
     t.add(mesh(CYL(8), M(0x8a6238), 0,1.5,0, 0,0,.08, .24,.24,3));
     for(let k=0;k<6;k++){ const fa=k*Math.PI/3;
-      t.add(mesh(CONE(6), M(0x35a04e), Math.cos(fa)*1.1,3.1,Math.sin(fa)*1.1, Math.PI/2.6*Math.cos(fa),0,Math.PI/2.6*Math.sin(fa)+1.2, .4,1.9,.12)); }
+      t.add(mesh(CONE(6), M(0x55cf74), Math.cos(fa)*1.1,3.1,Math.sin(fa)*1.1, Math.PI/2.6*Math.cos(fa),0,Math.PI/2.6*Math.sin(fa)+1.2, .4,1.9,.12)); }
     scene.add(t);
   }
   const volc=new THREE.Group(); volc.position.set(-24,0,-70); scene.add(volc);

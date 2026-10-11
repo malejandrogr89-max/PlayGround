@@ -29,6 +29,7 @@ check('menús: selección 3D giratoria + pausa + reinicio + final', js.includes(
 check('cámara tercera persona (sigue al kart por detrás)', js.includes('lookAt') && js.includes('camera.position.lerp') && js.includes('state.z+9'));
 check('música procedural + mute + volúmenes independientes', js.includes('startMusic') && html.includes('btn-mute') && js.includes('setMusicVol') && js.includes('setSfxVol'));
 check('index.html referencia game.js + three.js', html.includes('game.js') && html.includes('three'));
+check('estilo juguete blando: M() siempre suave + ojos grandes + contorno', js.includes('flatShading:false') && js.includes('s *= 1.4') && js.includes('isOutline') && js.includes('pastel'));
 check('sin llamadas a add() con no-objetos', !js.includes('add?.(0)'));
 
 if (process.argv.includes('--browser')) {
