@@ -251,48 +251,53 @@ function buildBraqui(d){
   const g = new THREE.Group(), P = {};
   const skin = M(d.color), bellyM = M(d.belly);
   // cuerpo voluminoso en forma de barril
-  g.add(mesh(SPH(), skin, 0,1.0,.5, 0,0,0, .78,.72,1.05));
-  g.add(mesh(SPH(), bellyM, 0,.82,.42, 0,0,0, .64,.58,.88));
-  g.add(mesh(SPH(10,8), skin, 0,1.55,.55, 0,0,0, .55,.4,.6)); // joroba de hombros
-  // cola larga y afilada (tubo continuo curvado)
+  g.add(mesh(SPH(), skin, 0,1.0,.5, 0,0,0, .85,.78,1.1));
+  g.add(mesh(SPH(), bellyM, 0,.82,.42, 0,0,0, .7,.62,.92));
+  g.add(mesh(SPH(10,8), skin, 0,1.6,.55, 0,0,0, .6,.44,.65)); // joroba de hombros
+  // cola más fina y larga, hacia atrás y algo hacia abajo (no tapa el kart)
   const tailCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0,1.05,1.35), new THREE.Vector3(0,1.0,2.0),
-    new THREE.Vector3(0,.85,2.7), new THREE.Vector3(0,.6,3.3),
+    new THREE.Vector3(0,1.0,1.4), new THREE.Vector3(0,.9,2.2),
+    new THREE.Vector3(0,.68,3.1), new THREE.Vector3(0,.42,4.0),
   ]);
   const tail = new THREE.Group(); tail.position.set(0,0,0); g.add(tail); P.tail = tail;
-  tail.add(new THREE.Mesh(new THREE.TubeGeometry(tailCurve, 12, .26, 10),
+  tail.add(new THREE.Mesh(new THREE.TubeGeometry(tailCurve, 12, .17, 10),
     skin.clone()));
   tail.children[0].castShadow=true;
-  // CUELLO espectacular: 11 segmentos continuos en curva S, con retardo de fase
+  // CUELLO en S visible desde atrás: deriva lateral + base al frente, arco alto
+  // y cabeza que mira al frente-abajo. 11 segmentos con retardo de fase.
   const neckPivot = new THREE.Group(); neckPivot.position.set(0,1.35,-.35); g.add(neckPivot);
-  const SEG = 11, SGL = .5; // longitud total 5.5 (≥2.5× el torso de ~2.1)
-  const tilts = [-.18,-.14,-.1,-.06,-.02,.02,.04,.05,.05,.04,.03]; // S suave, casi vertical
+  const SEG = 11, SGL = .52; // longitud total 5.72 (≥2.5× el torso de ~2.2)
+  const tilts = [-.3,-.24,-.16,-.08,0,.06,.08,.04,-.04,-.12,-.18];
+  const steps = [.21,.18,.12,.045,-.06,-.135,-.18,-.165,-.12,-.06,0]; // S lateral visible desde atrás
   P.neckSegs = [];
   let parent = neckPivot;
   for(let i=0;i<SEG;i++){
     const piv = new THREE.Group();
-    if(i>0) piv.position.set(0,SGL,0);
+    if(i>0) piv.position.set(steps[i],SGL,0); else piv.position.set(steps[0],0,0);
     piv.rotation.x = tilts[i];
     parent.add(piv);
-    const r = .34 - (i/SEG)*.19; // .34 → .15
+    const r = .36 - (i/SEG)*.2; // .36 → .16
     const seg = mesh(SPH(12,10), skin, 0,SGL/2,0, 0,0,0, r,SGL*.62,r);
     piv.add(seg);
+    piv.add(mesh(SPH(10,8), skin, 0,0,0, 0,0,0, r*1.02,r*.72,r*1.02)); // nudillo: unión suave
     if(i%3===1) piv.add(mesh(SPH(8,6), M(d.belly), r*.7,SGL*.5,r*.35, 0,0,0, .1,.14,.1)); // garganta clara
-    P.neckSegs.push({pivot:piv, base:tilts[i]});
+    P.neckSegs.push({pivot:piv, base:tilts[i], step:steps[i]});
     parent = piv;
   }
   P.neck = neckPivot;
-  // cabeza PEQUEÑA en lo alto, hija del último segmento (hereda el retardo)
-  const head = new THREE.Group(); head.position.set(0,SGL+.05,0); parent.add(head); P.headG = head;
-  head.add(mesh(SPH(), skin, 0,0,0, 0,0,0, .26,.24,.32));
-  head.add(mesh(SPH(), bellyM, 0,-.1,-.24, 0,0,0, .17,.13,.2)); // hocico
+  // cabeza 50 % MAYOR, hija del último segmento, mirando al frente-abajo
+  const head = new THREE.Group(); head.position.set(0,SGL+.05,0); head.rotation.x=-.35; head.userData.basePitch=-.35; parent.add(head); P.headG = head;
+  head.add(mesh(SPH(), skin, 0,0,0, 0,0,0, .39,.36,.48));
+  head.add(mesh(SPH(), bellyM, 0,-.15,-.34, 0,0,0, .26,.2,.3)); // hocico claro
+  head.add(mesh(SPH(8,6), M(0xe2596b), 0,-.22,-.42, 0,0,0, .12,.06,.1)); // sonrisa: lengua
   for(const s of [-1,1]){
-    head.add(mesh(SPH(8,6), M(0x3a2a1a), s*.07,.14,-.3, 0,0,0, .035,.045,.03)); // narinas altas
-    head.add(mesh(CONE(8), skin, s*.13,.2,-.02, 0,0,s*-.3, .06,.13,.06));
+    head.add(mesh(SPH(8,6), M(0x3a2a1a), s*.1,.2,-.42, 0,0,0, .05,.06,.04)); // narinas altas
+    head.add(mesh(CONE(8), skin, s*.18,.3,-.02, 0,0,s*-.3, .08,.18,.08));
+    head.add(mesh(SPH(8,6), M(0xff9db0), s*.3,-.08,-.3, 0,0,0, .08,.06,.06)); // mejillas
   }
-  baseEyes(head, .2,.06,-.2,.085);
-  const jaw = new THREE.Group(); jaw.position.set(0,-.18,-.15); head.add(jaw); P.jaw = jaw;
-  jaw.add(mesh(SPH(), bellyM, 0,0,-.08, 0,0,0, .14,.07,.18));
+  baseEyes(head, .28,.1,-.28,.12); // ojos grandes
+  const jaw = new THREE.Group(); jaw.position.set(0,-.26,-.2); head.add(jaw); P.jaw = jaw;
+  jaw.add(mesh(SPH(), bellyM, 0,0,-.1, 0,0,0, .2,.1,.26));
   // patas robustas de elefante con uñas
   for(const s of [-1,1]) for(let i=0;i<2;i++){
     const z = .95-i*1.1;
@@ -541,16 +546,17 @@ export function buildDinosaur(id){
   const d = DINOS.find(x=>x.id===id) || DINOS[0];
   const built = DINO_BUILDERS[d.id](d);
   try { detailDino(d.id, built.group, built.parts, d); } catch(e){}
-  try { softToyFinish(built.group, built.parts); } catch(e){}
+  try { softToyFinish(built.group, built.parts, d.id); } catch(e){}
   return { ...built, def: d };
 }
-/* acabado "juguete blando": cabezas un poco más grandes (proporción tierna)
+/* acabado "juguete blando": cabezas un poco más grandes (proporción tierna;
+   el braquiosaurio ya trae su cabeza al +50 %, no se reescala)
    + contorno suave tipo dibujo animado en la cabeza (1 malla extra por pj) */
 const _outlineMat = ()=>new THREE.MeshBasicMaterial({color:0x4a3f55, side:THREE.BackSide});
-function softToyFinish(group, P){
+function softToyFinish(group, P, id){
   const headG = P.headG || (P.head && P.head.isGroup ? P.head : null) || P.body || null;
   if(!headG) return;
-  if(headG.isGroup && !P.body) headG.scale.multiplyScalar(1.12);
+  if(headG.isGroup && !P.body && id!=='braqui') headG.scale.multiplyScalar(1.12);
   // la malla más grande de la cabeza recibe un cascarón invertido = contorno
   let big=null, bigR=0;
   const kids = headG.isGroup ? headG.children : [headG];
@@ -635,7 +641,7 @@ export function buildKart(colorIdx=0, marine=false){
 export function mountDinoOnKart(dinoGroup, kartGroup, dinoId){
   // El dino va sentado sobre el asiento, alto para que se vea entero
   dinoGroup.position.set(0,.62,.35);
-  const s = dinoId==='braqui' ? .78 : dinoId==='ptera' ? .9 : .95;
+  const s = dinoId==='braqui' ? .85 : dinoId==='ptera' ? .9 : .95;
   dinoGroup.scale.setScalar(s);
   kartGroup.add(dinoGroup);
 }
@@ -1403,7 +1409,7 @@ function animDino(p, t, dt, extra={}){
       sg.pivot.rotation.z = Math.sin(t*.7-i*.3)*.022 + steer*-.022;
     });
     if(P.headG){ P.headG.rotation.y = Math.sin(t*.8+P._ph)*.35; P.headG.rotation.z = Math.sin(t*1.1)*.1;
-      P.headG.rotation.x = -headUp*.7 + Math.sin(t*2)*.06; }
+      P.headG.rotation.x = (P.headG.userData.basePitch||0) - headUp*.7 + Math.sin(t*2)*.06; }
     if(P.tail) P.tail.rotation.y = Math.sin(t*2.2)*.2;
   } else if(id==='trice'){ // cabezazos juguetones de lado a lado
     if(P.head){ P.head.rotation.z = Math.sin(t*2.4)*.12; P.head.position.y = 1.25+Math.abs(Math.sin(t*3.1))*.05; }
@@ -1551,7 +1557,7 @@ function loop(){
     const cxp = state.x*.55, cyp = 4.7+state.y*.35, czp = state.z+9.8;
     camera.position.lerp(new THREE.Vector3(cxp,cyp,czp), Math.min(1,dt*5));
     // al braquiosaurio se le encuadra más alto para no tapar cuello ni cabeza
-    const lookY = (player.def.id==='braqui'?2.4:1.5)+state.y*.3;
+    const lookY = (player.def.id==='braqui'?3.0:1.5)+state.y*.3;
     camera.lookAt(state.x*.8, lookY, state.z-7);
     // sol sigue al jugador para sombras estables
     scene.children.forEach(o=>{ if(o.isDirectionalLight&&o.castShadow){ o.position.set(state.x+18,32,state.z+12); o.target.position.set(state.x,0,state.z-10); o.target.updateMatrixWorld(); }});
@@ -1698,7 +1704,10 @@ function wireUI(){
   camera.position.set(-2.6,3.2,3.6); camera.lookAt(-4.6,1.5,-3.2);
   const menuAnim=()=>{
     if(state.mode==='menu'||state.mode==='dino'||state.mode==='track'){
-      player.rig.rotation.y+=.008;
+      // el braquiosaurio no gira: posa de perfil (cuello hacia la izquierda)
+      // para mostrar la S y la cabeza fuera de la tarjeta
+      if(player.def.id==='braqui') player.rig.rotation.y += (-0.55-player.rig.rotation.y)*.05;
+      else player.rig.rotation.y+=.008;
       animDino(player,elapsed,.016,{speed:4,steer:Math.sin(elapsed*.6)*.12});
       for(const b of flock){
         b.ph+=.016*b.sp;
@@ -1714,10 +1723,12 @@ function wireUI(){
         player=makePlayer(state.dinoId,di); player.rig.position.set(-8,0.3,-2.3); scene.add(player.rig);
         dinoRoar(player,.3);
       }
-      // al braquiosaurio se le encuadra más alto también en el menú
+      // al braquiosaurio se le encuadra a la izquierda en el menú
+      // (medido: cabeza proyectada fuera de la tarjeta con esta cámara)
       const tallM = player.def.id==='braqui';
-      camera.position.lerp(new THREE.Vector3(tallM?-2.6:Math.sin(elapsed*.3)*.6-2.6,tallM?4.2:3.2,3.6),.03);
-      camera.lookAt(-4.2,tallM?3.3:1.5,-3.2);
+      camera.position.lerp(new THREE.Vector3(tallM?-5.6:Math.sin(elapsed*.3)*.6-2.6,tallM?5.6:3.2,tallM?8:3.6),.03);
+      if(tallM) camera.lookAt(-0.7,4.4,-3.2);
+      else camera.lookAt(-4.2,1.5,-3.2);
     }
     requestAnimationFrame(menuAnim);
   };
@@ -1728,4 +1739,4 @@ function wireUI(){
 wireUI();
 
 // gancho para pruebas automatizadas
-window.__DINO_RACE__ = { DINOS, TRACKS, DINO_BUILDERS, buildDinosaur, buildKart, buildWorld, spawnEntities, Input, state, music, dinoRoar, animDino, getEnts:()=>ents, THREE };
+window.__DINO_RACE__ = { DINOS, TRACKS, DINO_BUILDERS, buildDinosaur, buildKart, buildWorld, spawnEntities, Input, state, music, dinoRoar, animDino, getEnts:()=>ents, getCamera:()=>camera, getPlayer:()=>player, THREE };
