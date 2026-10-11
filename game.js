@@ -713,6 +713,8 @@ class MusicBox {
   jump(){ this.beep(400,.18,'square',.14); this.beep(700,.2,'square',.12,.08); }
   egg(){ this.beep(880,.12,'sine',.16); this.beep(1320,.15,'sine',.14,.07); }
   star(){ [660,830,990,1320].forEach((f,i)=>this.beep(f,.14,'triangle',.15,i*.07)); }
+  /* hilera completa: do-re-mi-sol ascendente y alegre (bus de efectos) */
+  arpeggio(){ [523,587,659,784].forEach((f,i)=>this.beep(f,.22,'triangle',.18,i*.11)); }
   hit(){ this.beep(160,.25,'sawtooth',.14); }
   fanfare(){ [523,659,784,1047,784,1047,1319].forEach((f,i)=>this.beep(f,.22,'square',.13,i*.14)); }
   click(){ this.beep(600,.07,'square',.1); }
@@ -1161,19 +1163,48 @@ export function spawnEntities(scene, LEN){
       e.userData={taken:false}; scene.add(e); eggs.push(e);
     }
   }
-  // ESTRELLAS-PREMIO: exactamente 20 por circuito, en la trazada, reparto uniforme
+  // ESTRELLAS-PREMIO: 20 por circuito en HILERAS (6+6+5) + arco elevado (3),
+  // siguiendo la trazada. Geometría y material COMPARTIDOS (rendimiento).
   _dotTex=_dotTex||dotTexture();
-  for(let i=0;i<20;i++){
-    const s=new THREE.Group();
-    const z=-70-i*(LEN-150)/19, x=Math.sin(i*1.7)*4.2;
-    s.position.set(x,1.4,z);
-    const star=mesh(new THREE.OctahedronGeometry(.62,0), M(0xffd43b,{emissive:0xffaa00,emissiveIntensity:.75,roughness:.25}), 0,0,0, 0,0,0, 1,1.3,1);
-    s.add(star);
-    const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:_dotTex,color:0xffe27a,transparent:true,opacity:.85,depthWrite:false,blending:THREE.AdditiveBlending}));
-    glow.scale.set(2.6,2.6,1); s.add(glow);
-    s.userData={taken:false,core:star,glow,ph:i*.7}; scene.add(s); stars.push(s);
-  }
+  const sg=starGeometry(), sm=starMaterial();
+  const rows=[6,6,5,3];
+  let idx=0;
+  rows.forEach((count,ri)=>{
+    const zBase = ri===0 ? -70 : ri===1 ? -LEN*0.45 : -LEN+220;
+    const xBase = Math.sin(ri*2.1)*3.5;
+    for(let k=0;k<count;k++,idx++){
+      const s=new THREE.Group();
+      let x, z, y=1.4;
+      if(ri<3){ x=xBase+Math.sin(k*.6)*1.2; z=zBase-k*6; } // hilera separada 6 m
+      else { x=(k-1)*2.2; z=-LEN+150; y=[1.4,2.8,1.4][k]; } // arco final elevado
+      s.position.set(x,y,z);
+      const star=new THREE.Mesh(sg,sm); star.castShadow=true; s.add(star);
+      const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:_dotTex,color:0xffe27a,transparent:true,opacity:.85,depthWrite:false,blending:THREE.AdditiveBlending}));
+      glow.scale.set(3.2,3.2,1); s.add(glow);
+      s.userData={taken:false,core:star,glow,ph:idx*.7,row:ri,baseY:y}; scene.add(s); stars.push(s);
+    }
+  });
   return { obstacles, eggs, stars };
+}
+/* estrella clásica de 5 puntas (punta arriba), extruida fina con bisel */
+let _starGeo=null, _starMat=null;
+function starGeometry(){
+  if(_starGeo) return _starGeo;
+  const sh=new THREE.Shape(), R=1, r=.45;
+  for(let i=0;i<10;i++){
+    const a=Math.PI/2+i*Math.PI/5, rad=i%2===0?R:r;
+    const px=Math.cos(a)*rad, py=Math.sin(a)*rad;
+    if(i===0) sh.moveTo(px,py); else sh.lineTo(px,py);
+  }
+  sh.closePath();
+  _starGeo=new THREE.ExtrudeGeometry(sh,{depth:.3,bevelEnabled:true,bevelThickness:.06,bevelSize:.06,bevelSegments:2});
+  _starGeo.translate(0,0,-.15);
+  return _starGeo;
+}
+function starMaterial(){
+  if(_starMat) return _starMat;
+  _starMat=new THREE.MeshStandardMaterial({color:0xffd43b,emissive:0xcc7a00,emissiveIntensity:.55,roughness:.3,metalness:.35});
+  return _starMat;
 }
 /* destellos al recoger estrellas (pool reciclado de motas doradas) */
 let starBursts=null;
@@ -1283,7 +1314,7 @@ function startRace(){
     scene.add(r.rig);
     rivals.push({ ...r, z:4-i*4, x:i===0?-3.4:3.4, spd:13.5+i*0.9, wob:Math.random()*9 });
   }
-  Object.assign(state,{speed:0,x:0,y:0,vy:0,z:10,targetX:0,eggs:0,stars:0,points:0,hits:0,time:0,slowT:0,invT:0,finished:false});
+  Object.assign(state,{speed:0,x:0,y:0,vy:0,z:10,targetX:0,eggs:0,stars:0,points:0,rowsDone:{},hits:0,time:0,slowT:0,invT:0,finished:false});
   setHUD(true); updateHUD(track);
   // cuenta atrás 3-2-1-¡YA!
   state.mode='countdown'; show('screen-countdown');
@@ -1537,14 +1568,29 @@ function loop(){
     }
     for(const s of ents.stars){
       if(s.userData.taken) continue;
-      s.rotation.y+=dt*3; s.position.y=1.4+Math.sin(elapsed*3+s.userData.ph)*.25;
+      // balanceo ±35° (nunca de canto) + cabeceo + flotación
+      s.rotation.y=Math.sin(elapsed*2+s.userData.ph)*.6;
+      s.rotation.x=Math.sin(elapsed*1.6+s.userData.ph)*.15;
+      s.position.y=s.userData.baseY+Math.sin(elapsed*3+s.userData.ph)*.25;
       s.userData.glow.material.opacity=.65+Math.sin(elapsed*5+s.userData.ph)*.25;
       const dz=s.position.z-state.z, dx=s.position.x-state.x, dy=(s.position.y)-(state.y+1.2);
-      if(Math.abs(dz)<2.2&&Math.abs(dx)<2.2&&Math.abs(dy)<2.6){
+      // ligera atracción al kart cuando pasa cerca
+      if(Math.abs(dz)<5&&Math.abs(dx)<3.5) s.position.x += (state.x-s.position.x)*Math.min(1,dt*3);
+      if(Math.abs(dz)<2.8&&Math.abs(dx)<2.8&&Math.abs(dy)<3.2){
         s.userData.taken=true; s.visible=false; state.stars++; state.points=(state.points||0)+10;
         music.star(); music.bell(1568,.06); dinoRoar(player,.7);
         burstAt(s.position.x,s.position.y,s.position.z);
         toast('⭐ ¡Estrella! +10');
+        // bonus de hilera completa: +20, do-re-mi-sol y destello grande
+        const row=s.userData.row;
+        if(row!==undefined && !state.rowsDone[row]){
+          const allRow=ents.stars.filter(o=>o.userData.row===row);
+          if(allRow.every(o=>o.userData.taken)){
+            state.rowsDone[row]=true; state.points+=20;
+            music.arpeggio(); burstAt(s.position.x,s.position.y,s.position.z,30);
+            toast('✨ ¡Hilera completa! +20 🎶');
+          }
+        }
       }
     }
     updateHUD();

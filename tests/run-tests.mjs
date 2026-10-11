@@ -24,6 +24,8 @@ check('mando Xbox (Gamepad API: stick/cruceta/A/Start)', js.includes('getGamepad
 check('teclado (flechas/espacio/escape)', js.includes('ArrowLeft') && js.includes('ArrowRight') && js.includes("code==='Space'") && js.includes("code==='Escape'"));
 check('kart con 4 ruedas que giran', js.includes('kartWheels') || (js.includes('wheels') && js.includes('tire.rotation')));
 check('estrellas-premio: 20 fijas, brillo, partículas, +10 pts y reinicio', js.includes('ESTRELLAS-PREMIO') && js.includes('makeBursts') && js.includes('burstAt(') && js.includes('state.points') && js.includes('points:0'));
+check('estrella 5 puntas extruida compartida + hileras 6/6/5/3 + bonus +20', js.includes('ExtrudeGeometry') && js.includes('starGeometry') && js.includes('6,6,5,3') && js.includes('arpeggio') && js.includes('rowsDone'));
+check('estrella sin giro completo: balanceo ±35° + atracción', js.includes('*.6') && js.includes('atracción'));
 check('meta con celebración (confeti + fanfarria + rugido)', js.includes('confetti') && js.includes('fanfare') && js.includes('dinoRoar'));
 check('rugidos por especie sincronizados con mandíbula', js.includes('ROAR_VOICE') && js.includes('_roarT') && js.includes('roar('));
 check('rugido grave: sierra 60-120Hz + AM bububu + boca paso-bajo + sin solape', js.includes("type='sawtooth'") && js.includes('bububu') && js.includes('_roarUntil') && js.includes('lp2'));
