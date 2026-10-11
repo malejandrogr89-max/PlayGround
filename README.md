@@ -80,3 +80,19 @@ silencio total 0. BPM medidos 93.7.
   victoria. Selección con iluminación de estudio.
 - Audio: **volumen independiente de música y efectos** (con rugidos) +
   silencio total; el audio solo arranca tras pulsar un botón.
+
+### 🧸 Ronda 3, parte 1
+- **Juguete blando**: sombreado suave global (0 mallas con flatShading),
+  pastelizado mate, contorno toon (2 cáscaras/personaje en los 9),
+  ojos ×1.45 y cuerpo ensanchado. Sin texturas ni modelos externos.
+- **Rugidos gruñido-grave**: sierra 60–120 Hz + AM 20–40 Hz + ruido
+  filtrado + paso bajo que se abre/cierra + caída final + ±5 % aleatorio;
+  tiburón burbujeante aparte. Sin solape, enfriamiento ≥8 s, botón
+  "¡TOCA PARA JUGAR!", auto-resume al volver a la pestaña, vols 0.5/0.8.
+- **Braquiosaurio**: cuello S de 11 segmentos (ratio 2.55 medido en torso),
+  cabeza +50 % con sonrisa, cola de 4 conos, cámaras dedicadas. Corregido
+  bug real: la cabeza flotaba (una línea de animación obsoleta la separaba
+  2,3 m del cuello; ahora 0,45 m exactos).
+- **Estrellas**: 5 puntas extruidas (geometría/material compartidos), 4
+  hileras de 5 por circuito, balanceo ±35°, magnetismo suave, +10, hilera
+  +20 con do-re-mi-sol, contador y reinicio verificados.
