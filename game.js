@@ -578,16 +578,17 @@ function softToyFinish(group, P, id){
 
 /* ============ KART (no tapa cabeza/cuernos/placas/cola) ============ */
 const KART_COLORS = [0xff4757,0x1cb0f6,0xffd43b,0x58cc02,0xa55eea,0xff5fa2,0xff7f50,0x3ec6b8,0x00b4d8];
-export function buildKart(colorIdx=0, marine=false){
+export function buildKart(colorIdx=0, marine=false, variant=null){
   const g = new THREE.Group();
-  const col = marine ? 0xf4f8ff : KART_COLORS[colorIdx % KART_COLORS.length];
+  const v = variant || (marine?'marine':'classic'); // classic | marine | rocket
+  const col = v==='marine' ? 0xf4f8ff : KART_COLORS[colorIdx % KART_COLORS.length];
   const bodyM = M(col,{roughness:.28, metalness:.25}), darkM = M(0x333344,{roughness:.6});
   const chromeM = M(0xdfe6ee,{roughness:.2, metalness:.75});
-  const trimM = M(marine?0x0096c7:col,{roughness:.35});
+  const trimM = M(v==='marine'?0x0096c7:(v==='rocket'?0xe63946:col),{roughness:.35});
   // chasis alto de juguete: el personaje queda visible por completo
   const chassis = mesh(BOX(), bodyM, 0,.65,.15, 0,0,0, 1.15,.22,1.9); g.add(chassis);
   g.add(mesh(BOX(), trimM, 0,.73,-.55, 0,0,0, .9,.14,.5)); // morro
-  if(marine){ // franja de olas + salvavidas a los lados (bajos, no tapan)
+  if(v==='marine'){ // franja de olas + salvavidas a los lados (bajos, no tapan)
     g.add(mesh(BOX(), trimM, 0,.65,.15, 0,0,0, 1.17,.08,1.92));
     for(const s of [-1,1]){
       const ring = mesh(new THREE.TorusGeometry(.22,.08,10,20), M(0xff6b35,{roughness:.5}), s*.98,.65,.3, 0,Math.PI/2,0, 1,1,1);
@@ -621,6 +622,14 @@ export function buildKart(colorIdx=0, marine=false){
   for(const s of [-1,1]){
     g.add(mesh(CYL(8), chromeM, s*.35,.73,1.1, Math.PI/2,0,0, .07,.07,.35));
     g.add(mesh(CYL(8), M(0x222222,{emissive:0xff8800,emissiveIntensity:.25}), s*.35,.73,1.28, Math.PI/2,0,0, .055,.055,.04));
+  }
+  if(v==='rocket'){ // COHETE: morro cónico, aletas y banda a cuadros (mismo manejo)
+    g.add(mesh(CONE(12), trimM, 0,.73,-1.35, -Math.PI/2,0,0, .3,.5,.3));
+    for(const s of [-1,1])
+      g.add(mesh(BOX(), trimM, s*.55,1.0,1.05, 0,0,s*.35, .08,.5,.4)); // aletas traseras
+    for(let i=0;i<6;i++)
+      g.add(mesh(BOX(), M(i%2?0xe63946:0xffffff,{roughness:.4}), -.45+i*.18,.66,.15, 0,0,0, .16,.06,.1)); // banda
+    g.add(mesh(SPH(10,8), M(0x9adcff,{roughness:.15,metalness:.3}), 0,.95,1.15, 0,0,0, .16,.16,.08)); // ojo de buey
   }
   // RUEDAS GORDAS de juguete: más anchas que el cuerpo, con llanta de color
   const wheels = [];
@@ -1448,7 +1457,7 @@ const camera = new THREE.PerspectiveCamera(62, innerWidth/innerHeight, .1, 600);
 addEventListener('resize', resize);
 
 const state = {
-  mode:'menu', dinoId:'trex', trackId:'jungla',
+  mode:'menu', dinoId:'trex', trackId:'jungla', kart:'classic',
   speed:0, baseSpeed:17, x:0, y:0, vy:0, z:10, targetX:0,
   eggs:0, stars:0, hits:0, time:0, slowT:0, invT:0, finished:false,
 };
@@ -1466,8 +1475,8 @@ function clearScene(){
   player=null; rivals=[]; world=null; ents=null; confetti=null;
 }
 
-function makePlayer(dinoId, colorIdx, simple=false){
-  const kart = buildKart(colorIdx, dinoId==='tiburon');
+function makePlayer(dinoId, colorIdx, simple=false, variant=null){
+  const kart = buildKart(colorIdx, dinoId==='tiburon', variant||state.kart);
   const {group, parts, def} = buildDinosaur(dinoId);
   mountDinoOnKart(group, kart.group, dinoId);
   kart.group.traverse(o=>{ if(o.isMesh){o.castShadow=true;} });
@@ -1485,7 +1494,7 @@ function startRace(){
   world = buildWorld(scene, track);
   ents = spawnEntities(scene, world.LEN);
   const di = DINOS.findIndex(d=>d.id===state.dinoId);
-  player = makePlayer(state.dinoId, di);
+  player = makePlayer(state.dinoId, di, false, state.kart);
   scene.add(player.rig);
   rivals = [];
   // 4 rivales con dinos distintos (incluido el tiburón), algo más lentos que el jugador
@@ -1914,7 +1923,7 @@ function initPreview(){
 function showPreview(id){
   if(pvRig){ pvScene.remove(pvRig); pvRig=null; }
   const di=DINOS.findIndex(d=>d.id===id);
-  const kart=buildKart(di, id==='tiburon'); const {group,parts,def}=buildDinosaur(id);
+  const kart=buildKart(di, id==='tiburon', state.kart); const {group,parts,def}=buildDinosaur(id);
   mountDinoOnKart(group,kart.group,id);
   pvRig=kart.group; pvRig.userData.anim={rig:kart.group,kart,dino:group,parts,def};
   pvScene.add(pvRig);
@@ -1949,6 +1958,12 @@ function wireUI(){
   $('btn-help').onclick=()=>{ music.click(); $('help-panel').classList.toggle('hidden'); };
   $('btn-back-menu').onclick=()=>{ music.click(); state.mode='menu'; show('screen-menu'); };
   $('btn-to-track').onclick=()=>{ music.click(); state.mode='track'; show('screen-track'); };
+  document.querySelectorAll('#kart-row .kart-btn').forEach(b=>{
+    if(b.dataset.kart===state.kart) b.classList.add('sel'); else b.classList.remove('sel');
+    b.onclick=()=>{ state.kart=b.dataset.kart; music.ensure(); music.click();
+      document.querySelectorAll('#kart-row .kart-btn').forEach(x=>x.classList.toggle('sel',x===b));
+      showPreview(state.dinoId); };
+  });
   $('btn-back-dino').onclick=()=>{ music.click(); state.mode='dino'; show('screen-dino'); };
   $('btn-race').onclick=()=>{ music.click(); startRace(); };
   $('btn-pause').onclick=()=>pauseGame();
@@ -1999,7 +2014,7 @@ function wireUI(){
     f.group.userData.s0=.8;
   }
   const motes = makeSparks(scene, 0, 6, -6, 0xfff59b, 50, 16);
-  player=makePlayer('trex',0); player.rig.position.set(-8,0.3,-2.3); scene.add(player.rig);
+  player=makePlayer('trex',0,false,state.kart); player.rig.position.set(-8,0.3,-2.3); scene.add(player.rig);
   camera.position.set(-2.6,3.2,3.6); camera.lookAt(-4.6,1.5,-3.2);
   const menuAnim=()=>{
     if(state.mode==='menu'||state.mode==='dino'||state.mode==='track'){
@@ -2019,7 +2034,7 @@ function wireUI(){
       if(player.def.id!==state.dinoId){
         scene.remove(player.rig);
         const di=DINOS.findIndex(d=>d.id===state.dinoId);
-        player=makePlayer(state.dinoId,di); player.rig.position.set(-8,0.3,-2.3); scene.add(player.rig);
+        player=makePlayer(state.dinoId,di,false,state.kart); player.rig.position.set(-8,0.3,-2.3); scene.add(player.rig);
         dinoRoar(player,.3);
       }
       // al braquiosaurio se le encuadra a la izquierda en el menú
