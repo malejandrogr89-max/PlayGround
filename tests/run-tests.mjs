@@ -44,6 +44,7 @@ check('4 rivales distintos con IA, giro propio y simplificados', js.includes('pi
 check('posición 1.º-5.º en HUD y podio en meta', html.includes('hud-pos') && js.includes('state.rank') && js.includes('¡${rank}.º!'));
 check('3 karts seleccionables con mismo manejo', js.includes("'rocket'") && html.includes('kart-row') && js.includes("kart:'classic'"));
 check('público: bebés instanciados fuera del asfalto, sin colisión, con yuju', js.includes('fx.crowd') && js.includes('rand(10.5,14)') && js.includes('setCrowdPose') && js.includes('cheer()'));
+check('niveles de ayuda Peque/Normal/Mayor guardados', js.includes('HELP_LEVELS') && js.includes("dr3d_help") && html.includes('help-row') && js.includes('loadHelp'));
 check('sin llamadas a add() con no-objetos', !js.includes('add?.(0)'));
 
 if (process.argv.includes('--browser')) {

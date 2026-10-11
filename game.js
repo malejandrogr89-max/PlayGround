@@ -1526,10 +1526,32 @@ const camera = new THREE.PerspectiveCamera(62, innerWidth/innerHeight, .1, 600);
 addEventListener('resize', resize);
 
 const state = {
-  mode:'menu', dinoId:'trex', trackId:'jungla', kart:'classic',
+  mode:'menu', dinoId:'trex', trackId:'jungla', kart:'classic', help:'peque',
   speed:0, baseSpeed:17, x:0, y:0, vy:0, z:10, targetX:0,
   eggs:0, stars:0, hits:0, time:0, slowT:0, invT:0, finished:false,
 };
+/* almacenamiento seguro: try/catch + valores por defecto si falla localStorage */
+function store(k, v){
+  try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k, v); }catch{ return null; }
+  return v;
+}
+/* niveles de ayuda: Peque (por defecto) / Normal / Mayor */
+const HELP_LEVELS = {
+  peque:  {icon:'🐣', auto:true,  assist:.85, label:'Peque'},
+  normal: {icon:'🙂', auto:false, assist:.35, label:'Normal'},
+  mayor:  {icon:'🦖', auto:false, assist:0,   label:'Mayor'},
+};
+function loadHelp(){
+  const h = store('dr3d_help');
+  state.help = HELP_LEVELS[h] ? h : 'peque';
+}
+function setHelp(h){
+  if(!HELP_LEVELS[h]) h='peque';
+  state.help=h; store('dr3d_help',h);
+  document.querySelectorAll('#help-row .kart-btn').forEach(x=>x.classList.toggle('sel',x.dataset.help===h));
+}
+function assistK(){ return (HELP_LEVELS[state.help]||HELP_LEVELS.peque).assist; }
+function autoThrottle(){ return (HELP_LEVELS[state.help]||HELP_LEVELS.peque).auto; }
 let world=null, ents=null, player=null, rivals=[], confetti=null, clock=new THREE.Clock();
 
 function toast(msg, ms=1600){
@@ -2022,8 +2044,12 @@ function buildSelectUI(){
 
 function wireUI(){
   Input.init();
+  loadHelp(); setHelp(state.help);
   buildSelectUI(); initPreview(); showPreview(state.dinoId);
   $('btn-start').onclick=()=>{ music.ensure(); music.click(); music.startMusic(); state.mode='dino'; show('screen-dino'); };
+  document.querySelectorAll('#help-row .kart-btn').forEach(b=>{
+    b.onclick=()=>{ music.ensure(); music.click(); setHelp(b.dataset.help); };
+  });
   $('btn-help').onclick=()=>{ music.click(); $('help-panel').classList.toggle('hidden'); };
   $('btn-back-menu').onclick=()=>{ music.click(); state.mode='menu'; show('screen-menu'); };
   $('btn-to-track').onclick=()=>{ music.click(); state.mode='track'; show('screen-track'); };
