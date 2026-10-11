@@ -12,6 +12,7 @@ catch { check('game.js sintaxis ESM válida', false); }
 
 const js = readFileSync('index.html', 'utf8').length > 0 ? readFileSync('game.js', 'utf8') : '';
 const html = readFileSync('index.html', 'utf8');
+const css = readFileSync('style.css', 'utf8');
 const builders = ['buildTrex', 'buildBraqui', 'buildTrice', 'buildVelo', 'buildStego', 'buildAnky', 'buildPara', 'buildPtera', 'buildTiburon'];
 for (const b of builders) check('constructor ' + b, js.includes('function ' + b));
 check('8 dinosaurios en DINOS (+tiburón como 9º personaje)', (js.match(/id:'(trex|braqui|trice|velo|stego|anky|para|ptera)'/g) || []).length === 8 && js.includes("id:'tiburon'"));
@@ -24,6 +25,10 @@ check('4 circuitos en TRACKS', (js.match(/id:'(jungla|desierto|valle|volcan)'/g)
 check('mando Xbox (Gamepad API: stick/cruceta/A/Start)', js.includes('getGamepads') && js.includes('buttons[14]') && js.includes('buttons[15]') && js.includes('buttons[0]') && js.includes('buttons[9]'));
 check('teclado (flechas/espacio/escape)', js.includes('ArrowLeft') && js.includes('ArrowRight') && js.includes("code==='Space'") && js.includes("code==='Escape'"));
 check('kart con 4 ruedas que giran', js.includes('kartWheels') || (js.includes('wheels') && js.includes('tire.rotation')));
+check('E ejes: troncos verticales (eje Y) y copas hacia arriba', !js.includes('.28,.28,2.2') && js.includes('.28,2.2,.28') && js.includes('setFromUnitVectors'));
+check('E rendimiento: pianos y líneas con InstancedMesh', js.includes('InstancedMesh'));
+check('E laterales: bebés, flores, mariposas, huevos, guirnaldas, pteras, arco', js.includes('babyDino') && js.includes('bigFlower') && js.includes('butterfly') && js.includes('giantEgg') && js.includes('garland') && js.includes('distantPteras') && js.includes('archStar'));
+check('E ambiente: viento+pájaros en bus de efectos, derrape y pill de huevos', js.includes('startAmbience') && js.includes('chirp(') && js.includes('skidT') && js.includes('pulsePill') && css.includes('pillpop'));
 check('juguete blando: sombreado suave global (sin flatShading)', !js.includes('flatShading:true'));
 check('juguete blando: pastel + gordito + contorno toon', js.includes('softenToy') && js.includes('addOutlines') && js.includes('BackSide'));
 check('juguete blando: ojos grandes (EYE_BIG)', js.includes('EYE_BIG = 1.45'));
