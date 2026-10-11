@@ -46,7 +46,7 @@ function mesh(geo, material, x=0,y=0,z=0, rx=0,ry=0,rz=0, sx=1,sy=1,sz=1){
   m.castShadow = true; m.receiveShadow = true;
   return m;
 }
-const SPH = (w=16,h=12)=>new THREE.SphereGeometry(1,w,h);
+const SPH = (w=20,h=14)=>new THREE.SphereGeometry(1,w,h);
 const BOX = ()=>new THREE.BoxGeometry(1,1,1);
 const CYL = (s=12)=>new THREE.CylinderGeometry(1,1,1,s);
 const CONE = (s=12)=>new THREE.ConeGeometry(1,1,s);
@@ -627,7 +627,7 @@ export function buildKart(colorIdx=0, marine=false){
   const tireM = M(0x22222c,{roughness:.9, bumpMap:scaleTexture(), bumpScale:.25}), hubM = M(0xffffff,{roughness:.25, metalness:.4});
   for(const [x,z,front] of [[-.68,-.6,1],[.68,-.6,1],[-.68,.85,0],[.68,.85,0]]){
     const pivot = new THREE.Group(); pivot.position.set(x,.32,z); pivot.userData.baseY=.32; g.add(pivot);
-    const tire = mesh(CYL(18), tireM, 0,0,0, 0,0,Math.PI/2, .36,.36,.27); pivot.add(tire);
+    const tire = mesh(CYL(24), tireM, 0,0,0, 0,0,Math.PI/2, .36,.36,.27); pivot.add(tire);
     const hub = mesh(CYL(12), hubM, 0,0,0, 0,0,Math.PI/2, .17,.17,.29); pivot.add(hub);
     for(let k=0;k<5;k++){ // radios de la llanta
       const sp = mesh(BOX(), M(col,{roughness:.4}), 0,0,0, k*Math.PI/5,0,0, .05,.3,.3);
@@ -1229,7 +1229,7 @@ export function buildWorld(scene, track){
     c.add(mesh(SPH(10,8),M(0xd8ecf7,{roughness:1}),0,-.5,0,0,0,0,2.0,1.0,1.4));
     scene.add(c); clouds.push(c);
   }
-  const {fx, biome} = themeProps(scene, track, LEN);
+  const {fx, biome, grp:decoGrp} = themeProps(scene, track, LEN);
   // meta: arco con banderas ondeantes + focos
   const meta=new THREE.Group(); meta.position.set(0,0,-LEN); scene.add(meta);
   meta.userData.flags=[];
@@ -1252,7 +1252,16 @@ export function buildWorld(scene, track){
   meta.add(mesh(new THREE.PlaneGeometry(10,1.6), new THREE.MeshBasicMaterial({map:tex}), 0,4.6,0, 0,0,0, 1,1,1));
   dust = makeDust(scene);
   starBursts = makeBursts(scene);
-  return { LEN, clouds, meta, fx, sky, biome };
+  // RAYOS DE SOL: 3 planos aditivos que siguen al jugador (baratos, sin postproceso)
+  _dotTex=_dotTex||dotTexture();
+  const rays=[];
+  for(let i=0;i<3;i++){
+    const rm=new THREE.Mesh(new THREE.PlaneGeometry(7,34),
+      new THREE.MeshBasicMaterial({map:_dotTex,color:0xfff3c4,transparent:true,opacity:.10,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,fog:false}));
+    rm.rotation.set(.3,0,.35+i*.25); rm.renderOrder=5;
+    scene.add(rm); rays.push(rm);
+  }
+  return { LEN, clouds, meta, fx, sky, biome, rays, deco:decoGrp };
 }
 
 export function spawnEntities(scene, LEN){
@@ -1718,6 +1727,14 @@ function loop(){
     if(prog>=.9&&!state.ms90){ state.ms90=true; toast('🏁 ¡Casi en la meta! ¡Tú puedes!'); music.bell(1568,.05); }
     if(world.fx) updateFx(world.fx, dt, elapsed);
     if(world.sky) world.sky.position.set(state.x, 0, state.z-60);
+    if(world.rays) for(let i=0;i<world.rays.length;i++){ const r=world.rays[i]; r.position.set(state.x-4+i*4, 12, state.z-22); }
+    // LOD barato: oculta el decorado a más de 130 m (se reevalúa 2 veces/s)
+    state.lodT=(state.lodT||0)-dt;
+    if(state.lodT<=0 && world.deco){
+      state.lodT=.5;
+      const kids=world.deco.children;
+      for(let i=0;i<kids.length;i++){ const k=kids[i]; if(k.position!==undefined) k.visible=Math.abs((k.position.z||0)-state.z)<130; }
+    }
     // cámara en tercera persona: suave, con leve FOV de velocidad (sin mareos)
     const targetFov = 62 + Math.min(1,state.speed/state.baseSpeed)*6;
     if(Math.abs(camera.fov-targetFov)>.05){ camera.fov += (targetFov-camera.fov)*Math.min(1,dt*2); camera.updateProjectionMatrix(); }

@@ -37,6 +37,7 @@ check('música procedural + mute + volúmenes independientes', js.includes('star
 check('index.html referencia game.js + three.js', html.includes('game.js') && html.includes('three'));
 check('estilo juguete blando: M() siempre suave + ojos grandes + contorno', js.includes('flatShading:false') && js.includes('s *= 1.4') && js.includes('isOutline') && js.includes('pastel'));
 check('biomas: jungla/volcán/lago/montaña con elementos propios', js.includes('biome.liana') && js.includes('lavaRiver') && js.includes('biome.fish') && js.includes('biome.geyser') && js.includes('Montaña Nieve') && js.includes('InstancedMesh'));
+check('calidad: esferas suaves + ruedas 24 seg + rayos + LOD', js.includes('(w=20,h=14)') && js.includes('CYL(24)') && js.includes('world.rays') && js.includes('world.deco'));
 check('sin llamadas a add() con no-objetos', !js.includes('add?.(0)'));
 
 if (process.argv.includes('--browser')) {
