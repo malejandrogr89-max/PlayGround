@@ -16,6 +16,8 @@ const builders = ['buildTrex', 'buildBraqui', 'buildTrice', 'buildVelo', 'buildS
 for (const b of builders) check('constructor ' + b, js.includes('function ' + b));
 check('8 dinosaurios en DINOS (+tiburón como 9º personaje)', (js.match(/id:'(trex|braqui|trice|velo|stego|anky|para|ptera)'/g) || []).length === 8 && js.includes("id:'tiburon'"));
 check('braquiosaurio: cuello de 11 segmentos con retardo de fase', js.includes('neckSegs') && js.includes('SEG = 11') && js.includes('i*.35'));
+check('braqui: cabeza 50% mayor con sonrisa', js.includes('sonrisa') && js.includes('.39,.36,.48'));
+check('braqui: S lateral (baseZ) + cola cónica ahusada', js.includes('baseZ') && js.includes('ahusados'));
 check('cámara alta solo para el braquiosaurio', js.includes("==='braqui'?2.4:1.5"));
 check('constructor buildTiburon + kart marino + voz propia', js.includes('function buildTiburon') && js.includes('marine') && js.includes('tiburon:{f:'));
 check('4 circuitos en TRACKS', (js.match(/id:'(jungla|desierto|valle|volcan)'/g) || []).length === 4);
