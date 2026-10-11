@@ -1657,6 +1657,39 @@ function applyMenuInput(){
 }
 function showPadLost(){ const el=$('pad-lost'); if(el) el.classList.remove('hidden'); }
 function hidePadLost(){ const el=$('pad-lost'); if(el) el.classList.add('hidden'); }
+/* tutorial de ~20 s solo la primera vez: mano y stick animados (CSS) + las
+   estrellas enseñan a girar. Se salta con A o el botón, y no vuelve a salir. */
+function maybeTuto(){
+  if(store('dr3d_tuto')==='1') return;
+  state.tuto=true;
+  const el=$('tuto'); if(el) el.classList.remove('hidden');
+  state.tutoTimer=setTimeout(closeTuto,20000);
+}
+function closeTuto(){
+  if(!state.tuto) return;
+  state.tuto=false; store('dr3d_tuto','1');
+  clearTimeout(state.tutoTimer);
+  const el=$('tuto'); if(el) el.classList.add('hidden');
+}
+/* flecha gigante hacia la próxima hilera si el kart va desviado */
+function updateGuide(dt){
+  const el=$('guide-arrow'); if(!el) return;
+  state.guideT=(state.guideT||0)-dt;
+  if(state.guideT>0) return;
+  state.guideT=.25;
+  if(state.mode!=='racing'||state.tuto){ el.classList.add('hidden'); return; }
+  let best=null;
+  for(const s of ents.stars){
+    if(s.userData.taken||s.position.z>state.z-2) continue;
+    if(!best||s.position.z>best.position.z) best=s;
+  }
+  if(!best){ el.classList.add('hidden'); return; }
+  const dx=best.position.x-state.x;
+  if(Math.abs(dx)<2.5){ el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.textContent = dx>0?'➡️':'⬅️';
+  el.style.left = dx>0?'62%':'30%';
+}
 function setHUD(v){ $('hud').classList.toggle('hidden',!v); }
 
 function clearScene(){
@@ -1709,7 +1742,7 @@ function startRace(){
     n--;
     if(n>0){ $('countdown-num').textContent=n; music.count(1); }
     else if(n===0){ $('countdown-num').textContent='¡YA! 🏁'; music.count(0); }
-    else { clearInterval(iv); show(null); state.mode='racing'; clock.getDelta(); dinoRoar(player,.85); toast('¡Corre, '+player.def.name+'! 🦖💨'); }
+    else { clearInterval(iv); show(null); state.mode='racing'; clock.getDelta(); dinoRoar(player,.85); toast('¡Corre, '+player.def.name+'! 🦖💨'); maybeTuto(); }
   },800);
 }
 
@@ -1916,11 +1949,12 @@ function loop(){
     state.x += (state.targetX-state.x)*Math.min(1,dt*7);
     // salto (con rugidito alegre ocasional en saltos grandes)
     const grounded = state.y<=0.001;
-    if(Input.takeJump()&&grounded){
+    const wantJump=Input.takeJump();
+    if(state.tuto){ if(wantJump) closeTuto(); } // A cierra el tutorial (ese salto no cuenta)
+    else if(wantJump&&grounded){
       state.vy=9.5; state.jumpPeak=0; music.jump(); Rumble.buzz({d:.08,w:.25});
       if(Math.random()<.5) dinoRoar(player,.6);
     }
-    else Input.takeJump();
     state.vy -= 24*dt; state.y += state.vy*dt;
     state.jumpPeak=Math.max(state.jumpPeak||0,state.y);
     if(state.y<0){
@@ -2059,7 +2093,7 @@ function loop(){
       }
     }
     updateHUD();
-    updateDust(dt); updateBursts(dt);
+    updateDust(dt); updateBursts(dt); updateGuide(dt);
     // hitos de carrera al 50 % y 90 % (proporcionales a cada circuito)
     const prog=(10-state.z)/world.LEN;
     if(prog>=.5&&!state.ms50){ state.ms50=true; toast('🎉 ¡Mitad del camino! ¡Genial!'); music.bell(1319,.05); }
@@ -2185,6 +2219,7 @@ function wireUI(){
   });
   $('btn-back-dino').onclick=()=>{ music.click(); state.mode='dino'; show('screen-dino'); };
   $('btn-race').onclick=()=>{ music.click(); startRace(); };
+  const bt=$('btn-tuto-ok'); if(bt) bt.onclick=()=>{ music.click(); closeTuto(); };
   $('btn-pause').onclick=()=>pauseGame();
   $('btn-resume').onclick=()=>resumeGame();
   $('btn-restart').onclick=()=>{ music.click(); startRace(); };
