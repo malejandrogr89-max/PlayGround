@@ -47,6 +47,24 @@ silencio total 0. BPM medidos 93.7.
   presentes. Ahora: cadena master con compresor y AnalyserNode, reanudación
   en cada gesto, rugidos más largos y presentes con colita alegre, burbujas
   del tiburón y sonda `music.level()` para verificación real.
+
+### ✨ Ronda 3, Parte 1 (estilo + audio + braquio + estrellas)
+- **Juguete blando**: sombreado suave global (0 de 459 mallas con facetas),
+  paleta pastel, ojos ×1.4, cabezas ×1.12 y contorno toon en cada cabeza
+  (9 cascarones). Vegetación en verde pastel.
+- **Rugidos gruñido grave**: sierra 60–120 Hz + AM 20–40 Hz + ruido filtrado
+  + paso bajo "boca" + descenso final + jitter ±5 %; picos medidos 0.72–0.78
+  (sin clipping, <0.95), RMS 0.20–0.25, energía >1 kHz ≤12 % (tiburón
+  burbujeante aparte, pico 0.28); sin solape; silencio total = RMS 0;
+  defaults música 0.5 / efectos 0.8; auto-resume al volver a la pestaña.
+- **Braquiosaurio**: cuello de 11 segmentos con S lateral visible desde
+  atrás, nudillos en las uniones, cabeza +50 % con sonrisa y ojos grandes,
+  cola fina y larga, ratio cuello/torso 2.6 (torso medido sin cuello ni
+  cola); cámaras dedicadas de menú (proyección medida) y carrera.
+- **Estrellas**: 5 puntas extruidas (geometría compartida), 20 por circuito
+  en hileras 6/6/5 + arco de 3, balanceo ±35°, atracción, radio generoso,
+  +10, bonus de hilera +20 con do-re-mi-sol; reinicio verificado.
+- **Tests**: 32 comprobaciones en verde + verificación en Chrome real.
 - **Estrellas-premio**: exactamente 20 por circuito en la trazada, con brillo,
   giro, flotación, destello de partículas, campanilla, +10 puntos y contador
   grande reiniciado por carrera.
