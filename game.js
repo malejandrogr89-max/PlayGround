@@ -18,6 +18,7 @@ export const DINOS = [
   { id:'anky',   name:'Anquilosaurio',   emoji:'🐢', color:0xb08954, belly:0xf0dfb8, desc:'¡Armadura de tortuga y cola con maza!' },
   { id:'para',   name:'Parasaurolophus', emoji:'🦆', color:0x3ec6b8, belly:0xd2f7f0, desc:'¡Cresta trompeta para cantar mientras corre!' },
   { id:'ptera',  name:'Pteranodon',      emoji:'🦅', color:0xf2a7c3, belly:0xffe3ef, desc:'¡Alas grandes y pico volador, el rey del cielo!' },
+  { id:'tiburon',name:'Tiburón',           emoji:'🦈', color:0x3aa7e0, belly:0xe8f6ff, desc:'¡Aletas, sonrisas y burbujas en su kart marino!' },
 ];
 
 export const TRACKS = [
@@ -193,6 +194,10 @@ function detailDino(id, g, P, d){
       for(let f=0;f<2;f++) w.add(mesh(CYL(6), skin, s*(.7+f*.45),.18-f*.12,-.05*f, 0,0,s*1.35, .03,.03,.8-f*.15));
     });
     for(const s of [-1,1]) claws(s*.2,.26,-.3,2,.035);
+  } else if(id==='tiburon'){
+    // línea lateral clara + motas del lomo (el resto ya viene del constructor)
+    for(const s of [-1,1]) add(mesh(BOX(), M(0x90d8f5), s*.47,1.05,.1, 0,0,0, .04,.07,1.1));
+    for(let i=0;i<4;i++) add(mesh(SPH(8,6), M(0x2a7aab), (i%2?.18:-.18),1.42-i*.05,.25+i*.16, 0,0,0, .07,.05,.07));
   }
   applyScales(g, d.color);
   return P;
@@ -488,12 +493,13 @@ function buildTiburon(d){
     lid.userData.isLid=true; lid.userData.baseY=.02; lid.castShadow=false;
     g.add(lid); g.userData.lids.push(lid);
   }
-  // sonrisa con dientes triangulares
+  // sonrisa con dientecitos pequeños y redondeados (nada amenazador)
   const jaw = new THREE.Group(); jaw.position.set(0,.86,-.55); g.add(jaw); P.jaw = jaw;
   jaw.add(mesh(SPH(10,8), bellyM, 0,-.04,-.15, 0,0,0, .24,.1,.3));
-  for(let i=0;i<5;i++) for(const s of [-1,1]){
-    g.add(mesh(CONE(6), M(0xffffff), s*.07*(i%2?1:-1)*0+i*.0+(i-2)*.09,1.02,-.92, 0,0,0, .035,.09,.035));
-    jaw.add(mesh(CONE(6), M(0xffffff), (i-2)*.09,-.02,-.3, Math.PI,0,0, .03,.07,.03));
+  const toothM = M(0xffffff,{roughness:.3});
+  for(let i=0;i<5;i++){
+    g.add(mesh(SPH(8,6), toothM, (i-2)*.085,1.0,-.93, 0,0,0, .04,.05,.04));
+    jaw.add(mesh(SPH(8,6), toothM, (i-2)*.085,-.0,-.32, 0,0,0, .035,.045,.035));
   }
   // branquias: 3 ranuras por lado
   for(const s of [-1,1]) for(let i=0;i<3;i++)
@@ -529,15 +535,27 @@ export function buildDinosaur(id){
 }
 
 /* ============ KART (no tapa cabeza/cuernos/placas/cola) ============ */
-const KART_COLORS = [0xff4757,0x1cb0f6,0xffd43b,0x58cc02,0xa55eea,0xff5fa2,0xff7f50,0x3ec6b8];
-export function buildKart(colorIdx=0){
+const KART_COLORS = [0xff4757,0x1cb0f6,0xffd43b,0x58cc02,0xa55eea,0xff5fa2,0xff7f50,0x3ec6b8,0x00b4d8];
+export function buildKart(colorIdx=0, marine=false){
   const g = new THREE.Group();
-  const col = KART_COLORS[colorIdx % KART_COLORS.length];
+  const col = marine ? 0xf4f8ff : KART_COLORS[colorIdx % KART_COLORS.length];
   const bodyM = M(col,{roughness:.28, metalness:.25}), darkM = M(0x333344,{roughness:.6});
   const chromeM = M(0xdfe6ee,{roughness:.2, metalness:.75});
-  // chasis bajo y abierto: el dino queda visible por completo
+  const trimM = M(marine?0x0096c7:col,{roughness:.35});
+  // chasis bajo y abierto: el personaje queda visible por completo
   const chassis = mesh(BOX(), bodyM, 0,.42,.15, 0,0,0, 1.15,.22,1.9); g.add(chassis);
-  g.add(mesh(BOX(), M(0xffffff,{roughness:.3, metalness:.1}), 0,.5,-.55, 0,0,0, .9,.14,.5)); // morro
+  g.add(mesh(BOX(), trimM, 0,.5,-.55, 0,0,0, .9,.14,.5)); // morro
+  if(marine){ // franja de olas + salvavidas a los lados (bajos, no tapan)
+    g.add(mesh(BOX(), trimM, 0,.42,.15, 0,0,0, 1.17,.08,1.92));
+    for(const s of [-1,1]){
+      const ring = mesh(new THREE.TorusGeometry(.22,.08,10,20), M(0xff6b35,{roughness:.5}), s*.98,.42,.3, 0,Math.PI/2,0, 1,1,1);
+      g.add(ring);
+      g.add(mesh(BOX(), M(0xffffff), s*.98,.64,.3, 0,0,0, .1,.08,.1));
+      g.add(mesh(BOX(), M(0xffffff), s*.98,.2,.3, 0,0,0, .1,.08,.1));
+    }
+    g.add(mesh(BOX(), trimM, 0,1.32,1.15, 0,0,0, .5,.3,.06)); // banderita con ola
+    g.add(mesh(SPH(8,6), M(0xffffff), 0,1.32,1.19, 0,0,0, .1,.1,.05));
+  }
   g.add(mesh(BOX(), bodyM, 0,.34,-1.05, .12,0,0, 1.0,.1,.5)); // alerón delantero
   for(const s of [-1,1]){ // pontones laterales con franja blanca
     g.add(mesh(BOX(), bodyM, s*.72,.4,.3, 0,0,0, .3,.26,1.1));
@@ -1180,7 +1198,7 @@ function clearScene(){
 }
 
 function makePlayer(dinoId, colorIdx){
-  const kart = buildKart(colorIdx);
+  const kart = buildKart(colorIdx, dinoId==='tiburon');
   const {group, parts, def} = buildDinosaur(dinoId);
   mountDinoOnKart(group, kart.group, dinoId);
   kart.group.traverse(o=>{ if(o.isMesh){o.castShadow=true;} });
@@ -1346,6 +1364,13 @@ function animDino(p, t, dt, extra={}){
   } else if(id==='ptera'){ // aleteo + planeo
     if(P.wings) P.wings.forEach((w,i)=>{ w.rotation.z = (i===0?1:-1)*(.25+Math.sin(t*7+P._ph)*(.35+air*.35)); w.rotation.x = air*-.25; });
     if(P.head){ P.head.rotation.x = -headUp*.8+Math.sin(t*2.5)*.06; P.head.rotation.y = Math.sin(t*1.9)*.25; }
+  } else if(id==='tiburon'){ // nado alegre: ondulación + cola + aletas
+    p.dino.rotation.y += Math.sin(t*6+P._ph)*.09;
+    if(P.tail){ P.tail.rotation.y = Math.sin(t*6+P._ph)*.55; P.tail.rotation.x = air*-.25+roar*.15; }
+    if(P.fins) P.fins.forEach((f,i)=>{ f.rotation.x = Math.sin(t*5+i*2.1)*.4; f.rotation.z = (i===0?-1:1)*(.3+Math.sin(t*5)*.1); });
+    if(P.dorsal) P.dorsal.rotation.z = Math.sin(t*6+P._ph)*.07;
+    if(P.jaw&&!roar) P.jaw.rotation.x = jawBase*.7 + Math.max(0,Math.sin(t*4.2))*.15; // mordisquitos
+    p.dino.position.y += Math.sin(t*3+P._ph)*.03;
   }
   if(P.legL) P.legL.rotation.x = Math.sin(t*11)*.5*(spd/16);
   if(P.legR) P.legR.rotation.x = -Math.sin(t*11)*.5*(spd/16);
@@ -1525,7 +1550,7 @@ function initPreview(){
 function showPreview(id){
   if(pvRig){ pvScene.remove(pvRig); pvRig=null; }
   const di=DINOS.findIndex(d=>d.id===id);
-  const kart=buildKart(di); const {group,parts,def}=buildDinosaur(id);
+  const kart=buildKart(di, id==='tiburon'); const {group,parts,def}=buildDinosaur(id);
   mountDinoOnKart(group,kart.group,id);
   pvRig=kart.group; pvRig.userData.anim={rig:kart.group,kart,dino:group,parts,def};
   pvScene.add(pvRig);
@@ -1538,7 +1563,7 @@ function buildSelectUI(){
   const grid=$('dino-grid'); grid.innerHTML='';
   DINOS.forEach(d=>{
     const el=document.createElement('div'); el.className='dino-card'+(d.id===state.dinoId?' sel':'');
-    el.innerHTML=`<div class="emoji">${d.emoji}</div><div class="nm">${d.name}</div><div class="cl" style="background:${'#'+d.color.toString(16).padStart(6,'0')}">${d.id==='ptera'?'vuela 🪽':d.id==='braqui'?'cuello largo':d.id==='trice'?'3 cuernos':d.id==='stego'?'placas':d.id==='anky'?'armadura':d.id==='para'?'trompeta':d.id==='velo'?'veloz':'fuerte 💪'}</div>`;
+    el.innerHTML=`<div class="emoji">${d.emoji}</div><div class="nm">${d.name}</div><div class="cl" style="background:${'#'+d.color.toString(16).padStart(6,'0')}">${d.id==='ptera'?'vuela 🪽':d.id==='braqui'?'cuello largo':d.id==='trice'?'3 cuernos':d.id==='stego'?'placas':d.id==='anky'?'armadura':d.id==='para'?'trompeta':d.id==='velo'?'veloz':d.id==='tiburon'?'aletas 🌊':'fuerte 💪'}</div>`;
     el.onclick=()=>{ state.dinoId=d.id; music.ensure(); music.click(); showPreview(d.id);
       grid.querySelectorAll('.dino-card').forEach(x=>x.classList.remove('sel')); el.classList.add('sel'); };
     grid.appendChild(el);
