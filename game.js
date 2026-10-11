@@ -761,7 +761,7 @@ class MusicBox {
       }
       this.step++;
     };
-    tick(); this.timer=setInterval(tick,300);
+    tick(); this.timer=setInterval(tick,320); // negra = 2 pasos → 93.75 BPM (rango 80-100)
   }
   stopMusic(){ this.playing=false; if(this.timer) clearInterval(this.timer); this.timer=null; }
 }
