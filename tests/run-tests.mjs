@@ -40,7 +40,9 @@ check('biomas: jungla/volcán/lago/montaña con elementos propios', js.includes(
 check('calidad: esferas suaves + ruedas 24 seg + rayos + LOD', js.includes('(w=20,h=14)') && js.includes('CYL(24)') && js.includes('world.rays') && js.includes('world.deco'));
 check('ruedas gordas + llamitas + mirada atrás', js.includes('RUEDAS GORDAS') && js.includes('makeFlames') && js.includes('flameAt(') && js.includes('lookBack'));
 check('choque con giro 360°: spin, tope -15%, rebote lento, cooldown', js.includes('state.spinT') && js.includes('speed*.87') && js.includes('baseSpeed*.85') && js.includes('slideWhistle') && js.includes('Bote suave'));
-check('4 rivales distintos con IA, giro propio y simplificados', js.includes('picks.forEach') && js.includes('tiburon') && js.includes('r.spinT') && js.includes('simple=false'));
+check('ayudas: acelerador auto/manual, asistencia, rescate, bordes blandos', js.includes('autoThrottle()') && js.includes('assistK()') && js.includes('stuckT>3') && js.includes('*= 0.96'));
+check('3 rivales (uno menos) con ayuda invisible', js.includes('picks.length>=3') && js.includes('catchup'));
+check('rivales distintos con IA, giro propio y simplificados', js.includes('picks.forEach') && js.includes('tiburon') && js.includes('r.spinT') && js.includes('simple=false'));
 check('posición 1.º-5.º en HUD y podio en meta', html.includes('hud-pos') && js.includes('state.rank') && js.includes('¡${rank}.º!'));
 check('3 karts seleccionables con mismo manejo', js.includes("'rocket'") && html.includes('kart-row') && js.includes("kart:'classic'"));
 check('público: bebés instanciados fuera del asfalto, sin colisión, con yuju', js.includes('fx.crowd') && js.includes('rand(10.5,14)') && js.includes('setCrowdPose') && js.includes('cheer()'));

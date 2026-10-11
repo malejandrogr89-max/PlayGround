@@ -876,27 +876,31 @@ export const Input = {
   readKeys(){
     this.left = !!(this.keys.ArrowLeft||this.keys.KeyA);
     this.right = !!(this.keys.ArrowRight||this.keys.KeyD);
+    this.gas = !!(this.keys.ArrowUp||this.keys.KeyW);
+    this.brake = !!(this.keys.ArrowDown||this.keys.KeyS);
   },
   poll(){
     // gamepad Xbox: stick izquierdo/cruceta -> moverse, A -> salto, Start -> pausa
-    let gx=0, gjump=false, gpause=false, name='';
+    // (mapeo completo Elite en tarea 3: aquí lectura básica + gatillos)
+    let gx=0, gjump=false, gpause=false, name='', gas=false, brake=false, nonStd=false;
     try{
       const gps = navigator.getGamepads?navigator.getGamepads():[];
       for(const gp of gps){ if(!gp||!gp.connected) continue;
-        name=gp.id||'Mando';
-        const ax = gp.axes[0]||0; if(Math.abs(ax)>0.25) gx=ax;
+        name=gp.id||'Mando'; if(gp.mapping&&gp.mapping!=='standard') nonStd=true;
+        const ax = gp.axes[0]||0; if(Math.abs(ax)>0.15) gx=ax;
         if(gp.buttons[14]?.pressed) gx=-1; if(gp.buttons[15]?.pressed) gx=1;
         if(gp.buttons[0]?.pressed) gjump=true;
         if(gp.buttons[9]?.pressed) gpause=true;
+        if((gp.buttons[7]?.value||0)>0.1) gas=true;   // RT = acelerar
+        if((gp.buttons[6]?.value||0)>0.1) brake=true; // LT = frenar
         break;
       }
     }catch{}
-    this.axis=gx;
+    this.axis=gx; this.padGas=gas||this.gas; this.padBrake=brake||this.brake; this.nonStd=nonStd;
     if(name!==this.padName||(!this.padSeen&&name)){ this.padSeen=!!name; this.padName=name; this.padUpdate(); }
-    if(gx<-0.25) this.left=true; else if(!this.keys.ArrowLeft&&!this.keys.KeyA&&gx>=-0.25) { if(this.axis!==0||true){} }
-    // combinar sin pisar teclado: recalcula
+    // combinar sin pisar teclado: recalcula (zona muerta ~0.15)
     const kL=!!(this.keys.ArrowLeft||this.keys.KeyA), kR=!!(this.keys.ArrowRight||this.keys.KeyD);
-    this.left = kL||gx<-0.25; this.right = kR||gx>0.25;
+    this.left = kL||gx<-0.15; this.right = kR||gx>0.15;
     // flancos de botones del mando
     if(gjump&&!this._gj){ this.jumpQ=true; } this._gj=gjump;
     if(gpause&&!this._gp){ this.pauseQ=true; } this._gp=gpause;
@@ -1588,12 +1592,12 @@ function startRace(){
   player = makePlayer(state.dinoId, di, false, state.kart);
   scene.add(player.rig);
   rivals = [];
-  // 4 rivales con dinos distintos (incluido el tiburón), algo más lentos que el jugador
+  // 3 rivales con dinos distintos (incluido el tiburón), algo más lentos que el jugador
   const pool = DINOS.filter(d=>d.id!==state.dinoId);
   const picks = [];
   const tib = pool.find(d=>d.id==='tiburon');
   if(tib) picks.push(tib);
-  for(const d of pool){ if(picks.length>=4) break; if(!picks.includes(d)) picks.push(d); }
+  for(const d of pool){ if(picks.length>=3) break; if(!picks.includes(d)) picks.push(d); }
   picks.forEach((other,i)=>{
     const r = makePlayer(other.id, (di+2+i*2)%9, true);
     r.rig.position.set(-4.5+i*3, 0, 6-i*3);
@@ -1602,7 +1606,7 @@ function startRace(){
     rivals.push({ ...r, z:6-i*3, x:-4.5+i*3, spd:14.2+i*0.5, wob:Math.random()*9, spinT:0, spinCd:0 });
   });
   try{ player.flames=makeFlames(scene,40); }catch{}
-  Object.assign(state,{speed:0,x:0,y:0,vy:0,z:10,targetX:0,eggs:0,stars:0,points:0,rowsDone:{},ms50:false,ms90:false,hits:0,time:0,slowT:0,invT:0,spinT:0,finished:false});
+  Object.assign(state,{speed:0,x:0,y:0,vy:0,z:10,targetX:0,eggs:0,stars:0,points:0,rowsDone:{},ms50:false,ms90:false,hits:0,time:0,slowT:0,invT:0,spinT:0,stuckT:0,steerSm:0,finished:false});
   setHUD(true); updateHUD(track);
   // cuenta atrás 3-2-1-¡YA!
   state.mode='countdown'; show('screen-countdown');
@@ -1806,9 +1810,14 @@ function loop(){
   if(world){ world.clouds.forEach((c,i)=>{ c.position.x += dt*(.4+i*.05); if(c.position.x>45)c.position.x=-45; });
     world.meta?.userData.flags?.forEach((f,i)=>{ f.rotation.y = Math.sin(elapsed*6+i*2)*.5; }); }
   if(state.mode==='racing'&&player){
-    const steerIn = (Input.right?1:0)-(Input.left?1:0) + (Math.abs(Input.axis)>0.25?Input.axis:0);
-    const steer = Math.max(-1,Math.min(1,steerIn));
+    const steerRaw = Math.max(-1,Math.min(1,(Input.right?1:0)-(Input.left?1:0) + (Math.abs(Input.axis)>0.15?Input.axis:0)));
+    // giro suavizado (sin tirones) + dirección asistida hacia la trazada
+    state.steerSm = (state.steerSm||0) + (steerRaw-(state.steerSm||0))*Math.min(1,dt*8);
+    const steer = state.steerSm, ak = assistK();
     state.targetX = Math.max(-5.2,Math.min(5.2, state.targetX + steer*13*dt));
+    if(ak>0) state.targetX += (0-state.targetX)*ak*dt*1.4; // la ayuda tira al centro
+    if(Math.abs(state.x)>4) state.targetX += (0-state.targetX)*ak*dt*2; // corrección en bordes
+    if(Math.abs(state.targetX)>=5.19) state.targetX *= 0.96; // bordes blandos: rebote suave
     state.x += (state.targetX-state.x)*Math.min(1,dt*7);
     // salto (con rugidito alegre ocasional en saltos grandes)
     const grounded = state.y<=0.001;
@@ -1827,11 +1836,25 @@ function loop(){
     }
     // mirada atrás en el salto: aparece y desaparece suavemente (corta y graciosa)
     state.lookBack = state.y>0.3 ? Math.min(1,(state.lookBack||0)+dt*4) : Math.max(0,(state.lookBack||0)-dt*3);
-    // velocidad (slow temporal tras choque, sin castigo duro)
+    // velocidad: Peque = acelerador automático; Normal/Mayor = manual (RT o ↑),
+    // freno opcional (LT o ↓). Sin gas se detiene suave (el rescate ayuda).
+    // Sin game over: siempre se puede llegar a la meta.
     state.slowT=Math.max(0,state.slowT-dt); state.invT=Math.max(0,state.invT-dt);
-    const spd = (state.slowT>0?9:state.baseSpeed);
+    let spd;
+    if(state.slowT>0) spd=9;
+    else if(autoThrottle()) spd=state.baseSpeed;
+    else if(Input.padBrake) spd=state.baseSpeed*.35;
+    else if(Input.padGas) spd=state.baseSpeed;
+    else spd=0;
     state.speed += (spd-state.speed)*Math.min(1,dt*2);
     state.z -= state.speed*dt;
+    // rescate automático: parado o atascado más de 3 s -> a la trazada con nube, sin castigo
+    if(state.speed<1.5) state.stuckT=(state.stuckT||0)+dt; else state.stuckT=0;
+    if(state.stuckT>3){
+      state.stuckT=0; state.x=0; state.targetX=0; state.speed=state.baseSpeed*.5; state.invT=2;
+      burstAt(state.x,1.5,state.z,16); music.cheer(); toast('🫧 ¡Al rescate! ¡Sigue así!');
+      try{ Rumble.buzz({d:.1,w:.15}); }catch{}
+    }
     state.time += dt; elapsed+=dt;
     player.rig.position.set(state.x, state.y, state.z);
     player.rig.rotation.y = -steer*.18;
@@ -1852,8 +1875,11 @@ function loop(){
     if(state.roarCd<=0){ dinoRoar(player,.65); state.roarCd=14+Math.random()*12; }
     // rivales con IA sencilla: siguen la trazada, algo más lentos, sin bloquear.
     // También hacen su giro de choque con obstáculos y entre ellos (solo visual).
+    // ayuda invisible: si el jugador va muy atrás, los rivales aflojan un poco
+    let minRZ=1e9; for(const q of rivals) minRZ=Math.min(minRZ,q.z);
+    const catchup=(state.z-minRZ>60)?.9:1;
     for(const r of rivals){
-      r.z -= r.spd*dt; r.wob+=dt*2; r.spinCd=Math.max(0,(r.spinCd||0)-dt);
+      r.z -= r.spd*catchup*dt; r.wob+=dt*2; r.spinCd=Math.max(0,(r.spinCd||0)-dt);
       r.x += Math.sin(r.wob)*dt*1.2; r.x=Math.max(-5,Math.min(5,r.x));
       r.rig.position.set(r.x, Math.abs(Math.sin(r.wob*2))*.1, r.z);
       if(r.spinT>0){
