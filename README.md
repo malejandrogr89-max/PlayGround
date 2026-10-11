@@ -35,7 +35,7 @@ o abriendo `index.html` en un navegador de escritorio con internet.
 - ⌨️ Teclado: ◀️ ▶️ (o A/D) = moverse · Espacio = saltar · Esc/P = pausa
 - 📱 Táctil: botones ◀️ ▶️ ¡SALTA!
 
-**Pruebas:** `node tests/run-tests.mjs` (27 comprobaciones estáticas, sintaxis ESM incluida).
+**Pruebas:** `node tests/run-tests.mjs` (41 comprobaciones estáticas, sintaxis ESM incluida).
 Verificado además en Chrome real: menú → selección (9) → 4 circuitos → salto →
 pausa → meta → reinicio, con 0 errores de consola. Audio verificado con
 AnalyserNode: los 9 rugidos dan pico RMS 0.84–0.93 sin clipping, música 0.049,
@@ -64,7 +64,28 @@ silencio total 0. BPM medidos 93.7.
 - **Estrellas**: 5 puntas extruidas (geometría compartida), 20 por circuito
   en hileras 6/6/5 + arco de 3, balanceo ±35°, atracción, radio generoso,
   +10, bonus de hilera +20 con do-re-mi-sol; reinicio verificado.
-- **Tests**: 32 comprobaciones en verde + verificación en Chrome real.
+### ✨ Ronda 4 (carreras largas, biomas, rivales, público)
+- **Circuitos 2000–2500 m** (2–2,5 min a 17 m/s) con hitos al 50 % y 90 %;
+  estrellas y decorado escalan con la longitud.
+- **Biomas**: jungla (lianas y helechos instanciados, cascada, luciérnagas),
+  volcán (ríos de lava, humo, ceniza), valle con lago (nenúfares, peces que
+  saltan, patos) y montaña nevada (pinos con nieve, nevada, géiseres); sol
+  con tinte propio por circuito. Desierto → Montaña Nieve.
+- **Calidad**: esferas 20×14, ruedas de 24 segmentos, rayos de sol baratos,
+  LOD que oculta decorado a >130 m; auditoría: 500 mallas sin NaN.
+- **Ruedas gordas** (R .55, kart más ancho que el dino) con chasis alto;
+  **llamitas** de dibujos en pool (40/12); **mirada atrás** en los saltos
+  (solo la cabeza; el cuello del braquio no se mueve).
+- **Choque con giro 360°** a velocidad media/alta (conserva ≥85 %,
+  estrellitas y silbato) o rebote suave a baja velocidad; cooldown 1,5 s.
+- **4 rivales** con IA de trazada (incluido el tiburón), más lentos,
+  simplificados (sin contornos ni sombras), con su propio giro de choque;
+  badge de posición 1.º–5.º y podio en meta.
+- **3 karts** seleccionables (clásico, marino, cohete) con el mismo manejo.
+- **Público**: ~90 bebés dino instanciados (4 mallas InstancedMesh) fuera
+  del asfalto (mín. medido 9.6), con saltitos, mirada al kart y «yuju»
+  suave con enfriamiento de 8 s. Sin colisión.
+- **Tests**: 41 comprobaciones en verde + verificación en Chrome real.
 - **Estrellas-premio**: exactamente 20 por circuito en la trazada, con brillo,
   giro, flotación, destello de partículas, campanilla, +10 puntos y contador
   grande reiniciado por carrera.
