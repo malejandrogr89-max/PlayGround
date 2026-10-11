@@ -48,6 +48,7 @@ check('3 karts seleccionables con mismo manejo', js.includes("'rocket'") && html
 check('público: bebés instanciados fuera del asfalto, sin colisión, con yuju', js.includes('fx.crowd') && js.includes('rand(10.5,14)') && js.includes('setCrowdPose') && js.includes('cheer()'));
 check('niveles de ayuda Peque/Normal/Mayor guardados', js.includes('HELP_LEVELS') && js.includes("dr3d_help") && html.includes('help-row') && js.includes('loadHelp'));
 check('mando Elite: mapeo standard, B, menús, desconexión', js.includes("mapping!=='standard'") && js.includes('MenuNav') && js.includes('padLost') && html.includes('pad-lost') && js.includes('pad-focus'));
+check('vibración: dual-rumble con tope 0.6, sustitutiva y ajuste', js.includes('vibrationActuator') && js.includes('Math.min(.6') && js.includes('dr3d_rumble') && html.includes('chk-rumble') && js.includes('Rumble.buzz'));
 check('sin llamadas a add() con no-objetos', !js.includes('add?.(0)'));
 
 if (process.argv.includes('--browser')) {

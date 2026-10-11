@@ -1563,7 +1563,42 @@ const state = {
   speed:0, baseSpeed:17, x:0, y:0, vy:0, z:10, targetX:0,
   eggs:0, stars:0, hits:0, time:0, slowT:0, invT:0, finished:false,
 };
-/* almacenamiento seguro: try/catch + valores por defecto si falla localStorage */
+/* VIBRACIÓN SUAVE del mando (dual-rumble): siempre try/catch, sustitutiva,
+   enfriamiento 80 ms, tope 0.6, desactivable y ligada a "reducir movimiento". */
+function reducedMotion(){ return !!state.reduceMotion; }
+const Rumble={
+  on: store('dr3d_rumble')!=='0',
+  last:0, timer:null,
+  set(on){ this.on=!!on; store('dr3d_rumble',on?'1':'0'); if(!on) this.stop(); },
+  stop(){ try{ Input._gpRef?.vibrationActuator?.reset?.(); }catch{} if(this.timer){clearTimeout(this.timer); this.timer=null;} },
+  buzz({d=.08,w=.25,s=0}){
+    if(!this.on||reducedMotion()) return false;
+    w=Math.min(.6,w); s=Math.min(.6,s);
+    const now=performance.now();
+    if(now-this.last<80) return false;
+    this.last=now;
+    try{
+      const act=Input._gpRef?.vibrationActuator;
+      if(!act||!act.playEffect) return false;
+      if(this.timer){ clearTimeout(this.timer); this.timer=null; }
+      const p=act.playEffect('dual-rumble',{startDelay:0,duration:Math.round(d*1000),weakMagnitude:w,strongMagnitude:s});
+      if(p&&p.catch) p.catch(()=>{});
+      return true;
+    }catch{ return false; }
+  },
+  pulse(n,gap,d,w){ // n pulsos con pausas (hilera, meta)
+    if(!this.on||reducedMotion()) return;
+    let i=0;
+    const step=()=>{ if(i>=n||!this.on) return; this.last=0; this.buzz({d,w}); i++; this.timer=setTimeout(step,d*1000+gap*1000); };
+    this.last=0; step();
+  },
+  meta(){ // victoria: 3 pulsos alternos suaves
+    if(!this.on||reducedMotion()) return;
+    [{d:.12,w:.25},{d:.12,s:.25},{d:.14,w:.25}].forEach((p,i)=>{
+      setTimeout(()=>{ this.last=0; this.buzz(p); },i*220);
+    });
+  },
+};
 function store(k, v){
   try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k, v); }catch{ return null; }
   return v;
@@ -1706,7 +1741,7 @@ function celebrate(){
     g.add(m); confetti.parts.push(m);
   }
   scene.add(g);
-  dinoRoar(player,.9);
+  dinoRoar(player,.9); Rumble.meta();
   music.fanfare(); setTimeout(()=>music.fanfare(),900);
   setTimeout(()=>{ if(state.mode==='finished') dinoRoar(player,.8); },1400);
 }
@@ -1882,7 +1917,7 @@ function loop(){
     // salto (con rugidito alegre ocasional en saltos grandes)
     const grounded = state.y<=0.001;
     if(Input.takeJump()&&grounded){
-      state.vy=9.5; state.jumpPeak=0; music.jump();
+      state.vy=9.5; state.jumpPeak=0; music.jump(); Rumble.buzz({d:.08,w:.25});
       if(Math.random()<.5) dinoRoar(player,.6);
     }
     else Input.takeJump();
@@ -1891,7 +1926,10 @@ function loop(){
     if(state.y<0){
       state.y=0;
       if(state.vy<-7){ player.parts._squash=1; music.beep(220,.12,'sine',.1);
-        flameAt(player.flames,state.x,.4,state.z+1.2,8,2.5); } // chispazo al aterrizar
+        flameAt(player.flames,state.x,.4,state.z+1.2,8,2.5);
+        const jp=state.jumpPeak||0; // aterrizaje: más alto = más notorio (pequeño casi nada)
+        if(jp<0.8) Rumble.buzz({d:.06,w:.1});
+        else Rumble.buzz({d:Math.min(.2,.08+jp*.03),w:.3,s:Math.min(.5,.1+jp*.12)}); }
       state.vy=0;
     }
     // mirada atrás en el salto: aparece y desaparece suavemente (corta y graciosa)
@@ -1912,8 +1950,8 @@ function loop(){
     if(state.speed<1.5) state.stuckT=(state.stuckT||0)+dt; else state.stuckT=0;
     if(state.stuckT>3){
       state.stuckT=0; state.x=0; state.targetX=0; state.speed=state.baseSpeed*.5; state.invT=2;
-      burstAt(state.x,1.5,state.z,16); music.cheer(); toast('🫧 ¡Al rescate! ¡Sigue así!');
-      try{ Rumble.buzz({d:.1,w:.15}); }catch{}
+      burstAt(state.x,1.5,state.z,16); music.cheer(); Rumble.buzz({d:.1,w:.15});
+      toast('🫧 ¡Al rescate! ¡Sigue así!');
     }
     state.time += dt; elapsed+=dt;
     player.rig.position.set(state.x, state.y, state.z);
@@ -1974,7 +2012,7 @@ function loop(){
           if(state.speed>=11){
             state.spinT=.7; state.spinFrom=player.rig.rotation.y;
             state.speed=Math.max(state.speed*.87, state.baseSpeed*.85); // pierde como mucho el 15 %
-            music.slideWhistle(); music.bell(1568,.06);
+            music.slideWhistle(); music.bell(1568,.06); Rumble.buzz({d:.4,w:.3,s:.3});
             burstAt(state.x,1.6,state.z,20);
             toast(['¡Giro loco! 🌀','¡Pirueta! ⭐','¡Wiii! 🎉'][state.hits%3]);
           } else {
@@ -2005,7 +2043,7 @@ function loop(){
       if(Math.abs(dz)<5&&Math.abs(dx)<3.5) s.position.x += (state.x-s.position.x)*Math.min(1,dt*3);
       if(Math.abs(dz)<2.8&&Math.abs(dx)<2.8&&Math.abs(dy)<3.2){
         s.userData.taken=true; s.visible=false; state.stars++; state.points=(state.points||0)+10;
-        music.star(); music.bell(1568,.06); dinoRoar(player,.7);
+        music.star(); music.bell(1568,.06); dinoRoar(player,.7); Rumble.buzz({d:.06,w:.2});
         burstAt(s.position.x,s.position.y,s.position.z);
         toast('⭐ ¡Estrella! +10');
         // bonus de hilera completa: +20, do-re-mi-sol y destello grande
@@ -2014,7 +2052,7 @@ function loop(){
           const allRow=ents.stars.filter(o=>o.userData.row===row);
           if(allRow.every(o=>o.userData.taken)){
             state.rowsDone[row]=true; state.points+=20;
-            music.arpeggio(); burstAt(s.position.x,s.position.y,s.position.z,30);
+            music.arpeggio(); Rumble.pulse(3,.06,.05,.3); burstAt(s.position.x,s.position.y,s.position.z,30);
             toast('✨ ¡Hilera completa! +20 🎶');
           }
         }
@@ -2158,6 +2196,8 @@ function wireUI(){
   const vm=$('vol-music'), vs=$('vol-sfx');
   if(vm){ vm.value=Math.round(music.musicVol*100); vm.oninput=()=>{ music.ensure(); music.setMusicVol(vm.value/100); }; }
   if(vs){ vs.value=Math.round(music.sfxVol*100); vs.oninput=()=>{ music.ensure(); music.setSfxVol(vs.value/100); }; }
+  const cr=$('chk-rumble');
+  if(cr){ cr.checked=Rumble.on; cr.onchange=()=>{ Rumble.set(cr.checked); music.ensure(); music.click(); }; }
   // fondo del menú: diorama prehistórico vivo con el dino elegido en pedestal
   clearScene();
   scene.background = new THREE.Color(0x87d7f5);
@@ -2234,4 +2274,4 @@ function wireUI(){
 wireUI();
 
 // gancho para pruebas automatizadas
-window.__DINO_RACE__ = { DINOS, TRACKS, DINO_BUILDERS, buildDinosaur, buildKart, buildWorld, spawnEntities, Input, state, music, dinoRoar, animDino, getEnts:()=>ents, getWorld:()=>world, getCamera:()=>camera, getPlayer:()=>player, getRivals:()=>rivals, THREE };
+window.__DINO_RACE__ = { DINOS, TRACKS, DINO_BUILDERS, buildDinosaur, buildKart, buildWorld, spawnEntities, Input, state, music, dinoRoar, animDino, getEnts:()=>ents, getWorld:()=>world, getCamera:()=>camera, getPlayer:()=>player, getRivals:()=>rivals, Rumble, THREE };
