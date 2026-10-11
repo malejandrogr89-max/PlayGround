@@ -35,9 +35,30 @@ o abriendo `index.html` en un navegador de escritorio con internet.
 - ⌨️ Teclado: ◀️ ▶️ (o A/D) = moverse · Espacio = saltar · Esc/P = pausa
 - 📱 Táctil: botones ◀️ ▶️ ¡SALTA!
 
-**Pruebas:** `node tests/run-tests.mjs` (23 comprobaciones estáticas, sintaxis ESM incluida).
-Verificado además en Chrome real: menú → selección 3D → carrera → salto →
-pausa → meta → reinicio, con 0 errores de consola.
+**Pruebas:** `node tests/run-tests.mjs` (27 comprobaciones estáticas, sintaxis ESM incluida).
+Verificado además en Chrome real: menú → selección (9) → 4 circuitos → salto →
+pausa → meta → reinicio, con 0 errores de consola. Audio verificado con
+AnalyserNode: los 9 rugidos dan pico RMS 0.84–0.93 sin clipping, música 0.049,
+silencio total 0. BPM medidos 93.7.
+
+### ✨ Ronda 2
+- **Audio que se oye**: causa raíz del silencio = AudioContext en `suspended`
+  hasta el primer gesto (diseño del navegador) + rugidos antiguos poco
+  presentes. Ahora: cadena master con compresor y AnalyserNode, reanudación
+  en cada gesto, rugidos más largos y presentes con colita alegre, burbujas
+  del tiburón y sonda `music.level()` para verificación real.
+- **Estrellas-premio**: exactamente 20 por circuito en la trazada, con brillo,
+  giro, flotación, destello de partículas, campanilla, +10 puntos y contador
+  grande reiniciado por carrera.
+- **Tiburón (9º)**: cuerpo hidrodinámico, hocico, branquias, dientes
+  redondeados, aletas dorsal/pectorales/caudal animadas, kart marino con
+  salvavidas, voz propia + burbujas. Corre en los 4 circuitos.
+- **Braquiosaurio**: cuello de 11 segmentos continuos con retardo de fase
+  (ratio cuello/torso 2.62 medido), cabeza pequeña, cámaras dedicadas en menú
+  y carrera para no taparlo.
+- **Música**: marimba + xilófono suave + campanillas (solo senos), 93.7 BPM
+  medidos, RMS muy por debajo de los rugidos; sliders independientes y
+  silencio total conservados.
 
 ### ✨ Edición Premium (v2)
 - Dinosaurios detallados: ojos expresivos con iris, brillo y **parpadeo**,
