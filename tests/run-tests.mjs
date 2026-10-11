@@ -39,6 +39,7 @@ check('estilo juguete blando: M() siempre suave + ojos grandes + contorno', js.i
 check('biomas: jungla/volcán/lago/montaña con elementos propios', js.includes('biome.liana') && js.includes('lavaRiver') && js.includes('biome.fish') && js.includes('biome.geyser') && js.includes('Montaña Nieve') && js.includes('InstancedMesh'));
 check('calidad: esferas suaves + ruedas 24 seg + rayos + LOD', js.includes('(w=20,h=14)') && js.includes('CYL(24)') && js.includes('world.rays') && js.includes('world.deco'));
 check('ruedas gordas + llamitas + mirada atrás', js.includes('RUEDAS GORDAS') && js.includes('makeFlames') && js.includes('flameAt(') && js.includes('lookBack'));
+check('choque con giro 360°: spin, tope -15%, rebote lento, cooldown', js.includes('state.spinT') && js.includes('speed*.87') && js.includes('baseSpeed*.85') && js.includes('slideWhistle') && js.includes('Bote suave'));
 check('sin llamadas a add() con no-objetos', !js.includes('add?.(0)'));
 
 if (process.argv.includes('--browser')) {

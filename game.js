@@ -715,6 +715,17 @@ class MusicBox {
   star(){ [660,830,990,1320].forEach((f,i)=>this.beep(f,.14,'triangle',.15,i*.07)); }
   /* hilera completa: do-re-mi-sol ascendente y alegre (bus de efectos) */
   arpeggio(){ [523,587,659,784].forEach((f,i)=>this.beep(f,.22,'triangle',.18,i*.11)); }
+  /* silbato deslizante gracioso para el giro de choque (suave, nada estridente) */
+  slideWhistle(){
+    if(!this.ctx||this.muted) return;
+    const t=this.ctx.currentTime, o=this.ctx.createOscillator(), g=this.ctx.createGain();
+    o.type='sine';
+    o.frequency.setValueAtTime(950,t);
+    o.frequency.exponentialRampToValueAtTime(340,t+.38);
+    g.gain.setValueAtTime(.001,t); g.gain.exponentialRampToValueAtTime(.22,t+.05);
+    g.gain.exponentialRampToValueAtTime(.001,t+.42);
+    o.connect(g); g.connect(this.sfxGain); o.start(t); o.stop(t+.45);
+  }
   hit(){ this.beep(160,.25,'sawtooth',.14); }
   fanfare(){ [523,659,784,1047,784,1047,1319].forEach((f,i)=>this.beep(f,.22,'square',.13,i*.14)); }
   click(){ this.beep(600,.07,'square',.1); }
@@ -1482,7 +1493,7 @@ function startRace(){
     rivals.push({ ...r, z:4-i*4, x:i===0?-3.4:3.4, spd:13.5+i*0.9, wob:Math.random()*9 });
   }
   try{ player.flames=makeFlames(scene,40); }catch{}
-  Object.assign(state,{speed:0,x:0,y:0,vy:0,z:10,targetX:0,eggs:0,stars:0,points:0,rowsDone:{},ms50:false,ms90:false,hits:0,time:0,slowT:0,invT:0,finished:false});
+  Object.assign(state,{speed:0,x:0,y:0,vy:0,z:10,targetX:0,eggs:0,stars:0,points:0,rowsDone:{},ms50:false,ms90:false,hits:0,time:0,slowT:0,invT:0,spinT:0,finished:false});
   setHUD(true); updateHUD(track);
   // cuenta atrás 3-2-1-¡YA!
   state.mode='countdown'; show('screen-countdown');
@@ -1710,6 +1721,13 @@ function loop(){
     player.rig.position.set(state.x, state.y, state.z);
     player.rig.rotation.y = -steer*.18;
     player.rig.rotation.z = -steer*.08;
+    if(state.spinT>0){ // giro ágil de 360°: acaba mirando al frente
+      state.spinT-=dt;
+      const k=1-Math.max(0,state.spinT)/.7;
+      player.rig.rotation.y=(state.spinFrom||0)+k*Math.PI*2;
+      if(state.spinT<=0){ state.spinT=0; player.rig.rotation.y=-steer*.18; }
+      burstAt(state.x,1.8,state.z,2);
+    }
     animDino(player, elapsed, dt, {speed:state.speed, steer, airY:state.y, lookBack:state.lookBack||0});
     // llamitas tras las ruedas al acelerar o derrapar (casi nada a baja velocidad)
     if(state.speed>12) flameAt(player.flames,state.x,.4,state.z+1.4,Math.abs(steer)>.6?3:1);
@@ -1726,18 +1744,27 @@ function loop(){
       if(r.spd>11&&Math.random()<.3) flameAt(r.flames,r.x,.4,r.z+1.4,1);
       updateFlames(r.flames,dt);
     }
-    // obstáculos
+    // obstáculos: a velocidad media/alta GIRO 360° con estrellitas (máx. -15 %);
+    // a velocidad baja, rebote suave. Enfriamiento 1,5 s (invT) anti-cadenas.
     for(const o of ents.obstacles){
       if(o.userData.done) continue;
       const dz=o.position.z-state.z, dx=o.position.x-state.x;
       if(Math.abs(dz)<1.6 && Math.abs(dx)<(o.userData.r||1.1)){
         const airbone = state.y>0.9;
         if(airbone){ continue; } // ¡saltado! sin choque
-        if(state.invT<=0){
-          state.hits++; state.slowT=1.4; state.invT=1.5; music.hit();
-          state.vy=5; state.y=Math.max(state.y,.2);
-          toast(['¡Ups! ¡Sin problema! 💪','¡Casi! ¡Sigue corriendo! 🦕','¡Buen intento! ¡Tú puedes! ⭐'][state.hits%3]);
-          player.rig.rotation.z=.3;
+        if(state.invT<=0 && !state.spinT){
+          state.hits++; state.invT=1.5;
+          if(state.speed>=11){
+            state.spinT=.7; state.spinFrom=player.rig.rotation.y;
+            state.speed=Math.max(state.speed*.87, state.baseSpeed*.85); // pierde como mucho el 15 %
+            music.slideWhistle(); music.bell(1568,.06);
+            burstAt(state.x,1.6,state.z,20);
+            toast(['¡Giro loco! 🌀','¡Pirueta! ⭐','¡Wiii! 🎉'][state.hits%3]);
+          } else {
+            state.speed*=.95; music.hit();
+            state.vy=4; state.y=Math.max(state.y,.15);
+            toast('¡Bote suave! 💪');
+          }
         }
       }
       if(o.position.z>state.z+15) o.userData.done=true;
