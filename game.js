@@ -23,7 +23,7 @@ export const DINOS = [
 
 export const TRACKS = [
   { id:'jungla',  name:'Jungla Verde',   emoji:'🌴', len:2000, sky:0x87d7f5, fog:0xaee6c8, ground:0x55b04e, road:0xd9b382, edge:0x3e8f3e, desc:'Árboles, lianas y monitos. ¡Fácil y alegre!' },
-  { id:'desierto',name:'Desierto Sol',   emoji:'🌵', len:2150, sky:0xffd9a3, fog:0xf7cf9a, ground:0xeec25e, road:0xc98d4e, edge:0xb4763a, desc:'Cactus, dunas y solecito. ¡Ponte gafas!' },
+  { id:'desierto',name:'Montaña Nieve',  emoji:'🏔️', len:2150, sky:0xaed6f0, fog:0xdceefb, ground:0xe9f1f5, road:0xc98d4e, edge:0x7fa8c9, desc:'Pinos nevados, nieve suave y géiseres. ¡Abrígate!' },
   { id:'valle',   name:'Valle Florido',  emoji:'🌸', len:2300, sky:0xa8e6ff, fog:0xc4ecff, ground:0x7ed957, road:0x9c7b54, edge:0x5da33f, desc:'Flores, río y arcoíris. ¡El más bonito!' },
   { id:'volcan',  name:'Volcán Chispa',  emoji:'🌋', len:2500, sky:0x4a3560, fog:0x6b4a7a, ground:0x6e5a6e, road:0x4a4a55, edge:0xff6b35, desc:'Lava que no quema, rocas y chispas. ¡Emoción!' },
 ];
@@ -894,7 +894,19 @@ function rand(a,b){ return a+Math.random()*(b-a); }
 
 export function themeProps(scene, track, LEN){
   const grp = new THREE.Group(); scene.add(grp);
-  const fx = { swayers:[], lavaMats:[], sparks:null, river:null };
+  const fx = { swayers:[], lavaMats:[], sparks:null, river:null, smoke:[], fish:[], ducks:[], geysers:[], falls:null };
+  const biome = {liana:0,fern:0,falls:0,lavaRiver:0,smoke:0,lake:0,lily:0,fish:0,duck:0,snowpine:0,geyser:0,cactus:0};
+  // InstancedMesh barato: una geometría + N transformaciones
+  const _dummy = new THREE.Object3D();
+  function inst(geo, mat, list, shadow=true){
+    const m=new THREE.InstancedMesh(geo,mat,list.length);
+    list.forEach((tr,i)=>{ _dummy.position.set(tr.p[0],tr.p[1],tr.p[2]);
+      _dummy.rotation.set(tr.r?.[0]||0,tr.r?.[1]||0,tr.r?.[2]||0);
+      _dummy.scale.set(tr.s?.[0]??tr.s??1,tr.s?.[1]??tr.s??1,tr.s?.[2]??tr.s??1);
+      _dummy.updateMatrix(); m.setMatrixAt(i,_dummy.matrix); });
+    m.instanceMatrix.needsUpdate=true; m.castShadow=shadow; m.receiveShadow=true;
+    grp.add(m); return m;
+  }
   function tree(x,z,s=1){
     const t=new THREE.Group(); t.position.set(x,0,z); t.scale.setScalar(s);
     t.add(mesh(CYL(8), M(0x7a5230,{roughness:.85}), 0,1.1,0, 0,0,0, .28,.28,2.2));
@@ -919,12 +931,13 @@ export function themeProps(scene, track, LEN){
     fx.swayers.push({o:t, ph:Math.random()*9, amt:.03});
     grp.add(t);
   }
-  function pine(x,z,s=1){
+  function pine(x,z,s=1,snow=false){
     const t=new THREE.Group(); t.position.set(x,0,z); t.scale.setScalar(s);
     t.add(mesh(CYL(8), M(0x6b4a2a), 0,.5,0, 0,0,0, .22,.22,1));
-    const g1=M(0x4cae6b,{roughness:.85});
+    const g1=M(snow?0x3f8f5f:0x4cae6b,{roughness:.85});
     t.add(mesh(CONE(10), g1, 0,1.6,0, 0,0,0, 1.1,1.6,1.1));
     t.add(mesh(CONE(10), g1, 0,2.6,0, 0,0,0, .8,1.3,.8));
+    if(snow) t.add(mesh(CONE(10), M(0xffffff,{roughness:.9}), 0,3.15,0, 0,0,0, .5,.7,.5)); // gorro de nieve
     grp.add(t);
   }
   function cactus(x,z,s=1){
@@ -965,7 +978,7 @@ export function themeProps(scene, track, LEN){
     const z=-i*28-rand(4,20), side=i%2?1:-1;
     const xOut=rand(9,26)*side, xOut2=rand(9,26)*-side;
     if(track.id==='jungla'){ (i%3===0?palm:tree)(xOut,z,rand(.8,1.5)); if(i%2===0)tree(xOut2,z-8,rand(.7,1.2)); if(i%3===0)flower(rand(-7,7),z); tuft(rand(-24,-8),z); tuft(rand(8,24),z-10); }
-    else if(track.id==='desierto'){ cactus(xOut,z,rand(.8,1.4)); rock(xOut2,z,rand(.5,1.2),0xc9a06a); if(i%4===0)rock(rand(-7,7),z+40,rand(.3,.5),0xd9b382); tuft(rand(-20,20),z,0xc2a14d); }
+    else if(track.id==='desierto'){ pine(xOut,z,rand(.9,1.5),true); biome.snowpine++; rock(xOut2,z,rand(.5,1.2),0x9aa5b1); if(i%4===0)rock(rand(-7,7),z+40,rand(.3,.5),0xdde6ec); tuft(rand(-20,20),z,0xe6eef3); }
     else if(track.id==='valle'){ (i%2?pine:tree)(xOut,z,rand(.7,1.1)); flower(xOut2,z); flower(rand(-8,8),z-6); tuft(rand(-22,22),z-4); if(i%5===0)rock(rand(-20,20),z,rand(.4,.8)); }
     else { rock(xOut,z,rand(.8,1.8),0x4a3a52); lava(xOut2,z,rand(1,2.4)); if(i%3===0)lava(rand(-14,-8),z,rand(.8,1.6)); if(i%3===1)lava(rand(8,14),z,rand(.8,1.6)); }
   }
@@ -999,8 +1012,80 @@ export function themeProps(scene, track, LEN){
   if(track.id==='jungla'){
     // luciérnagas / polen flotante
     fx.sparks = makeSparks(scene, 0, 4, -LEN/2, 0xfff59b, 70, 26);
+    // LIANAS colgantes (instanciadas) + HELECHOS gigantes (instanciados)
+    const vines=[], ferns=[];
+    for(let i=0;i<34;i++){ const vx=rand(10,26)*(i%2?1:-1), vz=-rand(60,LEN-60);
+      vines.push({p:[vx,3.4,vz],s:[rand(.8,1.3),rand(.9,1.4),rand(.8,1.3)],r:[0,rand(0,6),0]}); }
+    for(let i=0;i<44;i++){ const fx0=rand(9,24)*(i%2?1:-1), fz=-rand(60,LEN-60);
+      ferns.push({p:[fx0,0,fz],s:[rand(1,2.2),rand(.8,1.4),rand(1,2.2)],r:[0,rand(0,6),0]}); }
+    inst(new THREE.CylinderGeometry(.13,.09,5,7), M(0x2f7d3e,{roughness:.9}), vines);
+    inst(new THREE.ConeGeometry(1,1,7), M(0x55cf74,{roughness:.85}), ferns);
+    biome.liana=vines.length; biome.fern=ferns.length;
+    // CASCADA: acantilado + lámina de agua animada + espuma
+    const fz=-LEN*0.5, fall=new THREE.Group(); fall.position.set(-19,0,fz); scene.add(fall);
+    fall.add(mesh(BOX(), M(0x8a8f9e,{roughness:.95}), 0,4,0, 0,0,0, 6,8,3));
+    const wm=new THREE.MeshStandardMaterial({color:0x7fd4ff,roughness:.1,metalness:.3,transparent:true,opacity:.8});
+    const sheet=new THREE.Mesh(new THREE.PlaneGeometry(3.6,7.4),wm);
+    sheet.position.set(0,3.4,1.6); fall.add(sheet); fx.falls=wm;
+    fall.add(mesh(SPH(10,8), M(0xffffff,{roughness:.6}), 0,.3,2.2, 0,0,0, 2.2,.5,1.2)); // espuma
+    biome.falls=1;
   }
-  return {grp, fx};
+  if(track.id==='volcan'){
+    // RÍOS DE LAVA con brillo a ambos lados (pulsan con lavaMats)
+    for(const s of [-1,1]){
+      const lm=M(0xff5a00,{emissive:0xff4400,emissiveIntensity:1.1});
+      const r=mesh(new THREE.PlaneGeometry(2.2,LEN*.7), lm, s*11.5,.07,-LEN*.45, -Math.PI/2,0,0, 1,1,1);
+      scene.add(r); fx.lavaMats.push(lm); biome.lavaRiver++;
+    }
+    // HUMO del cráter: 8 motas grises ascendentes en bucle
+    _dotTex=_dotTex||dotTexture();
+    for(let i=0;i<8;i++){
+      const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:_dotTex,color:0x9a8a96,transparent:true,opacity:.5,depthWrite:false}));
+      sp.position.set(26+rand(-3,3),38,-LEN-80+rand(-4,4)); sp.scale.set(4,4,1);
+      scene.add(sp); fx.smoke.push({sp,t:Math.random()}); biome.smoke++;
+    }
+    // CENIZA cayendo en toda la pista
+    fx.ash=makeSparks(scene, 0, 14, -LEN/2, 0xcfc4bb, 110, 30);
+  }
+  if(track.id==='desierto'){
+    // NIEVE cayendo suave + GÉISERES (cono + surtidor translúcido pulsante)
+    fx.sparks = makeSparks(scene, 0, 12, -LEN/2, 0xffffff, 130, 30);
+    for(let i=0;i<3;i++){
+      const gz=-300-i*550, gx=(i%2?13:-13);
+      const gy=new THREE.Group(); gy.position.set(gx,0,gz); scene.add(gy);
+      gy.add(mesh(CONE(10), M(0x8a8f9e,{roughness:.9}), 0,.5,0, 0,0,0, 1.4,1,1.4));
+      const jetM=new THREE.MeshStandardMaterial({color:0xbfe9ff,roughness:.2,transparent:true,opacity:.75});
+      const jet=new THREE.Mesh(new THREE.CylinderGeometry(.5,.9,5,10),jetM);
+      jet.position.y=3; gy.add(jet);
+      fx.geysers.push({jet,t:Math.random()*9}); biome.geyser++;
+    }
+  }
+  if(track.id==='valle'){
+    // LAGO con nenúfares, PECES que saltan y PATOS
+    const lakeM=new THREE.MeshStandardMaterial({color:0x3fb6f2,roughness:.12,metalness:.4,transparent:true,opacity:.88});
+    const lake=new THREE.Mesh(new THREE.CircleGeometry(16,28),lakeM);
+    lake.rotation.x=-Math.PI/2; lake.position.set(-24,.06,-LEN*.55); lake.receiveShadow=true;
+    scene.add(lake); fx.lake=lakeM; biome.lake=1;
+    const lilies=[];
+    for(let i=0;i<22;i++){ const a=rand(0,6.28), rr=rand(3,13);
+      lilies.push({p:[-24+Math.cos(a)*rr,.12,-LEN*.55+Math.sin(a)*rr],s:[rand(.5,1)],r:[-Math.PI/2,0,rand(0,6)]}); }
+    inst(new THREE.CircleGeometry(.9,12), M(0x3fa34d,{roughness:.8,side:THREE.DoubleSide}), lilies,false);
+    biome.lily=lilies.length;
+    for(let i=0;i<4;i++){ // peces naranjas que saltan en arco
+      const f=new THREE.Group(); f.position.set(-24+rand(-8,8),.3,-LEN*.55+rand(-9,9)); scene.add(f);
+      f.add(mesh(SPH(8,6), M(0xff9a3d,{roughness:.6}), 0,0,0, 0,0,0, .35,.25,.6));
+      f.add(mesh(CONE(6), M(0xff7b2e,{roughness:.6}), 0,.1,.6, Math.PI/2.4,0,0, .2,.4,.08));
+      fx.fish.push({g:f,t:rand(0,9)}); biome.fish++;
+    }
+    for(let i=0;i<3;i++){ // patitos amarillos en círculo
+      const dk=new THREE.Group(); scene.add(dk);
+      dk.add(mesh(SPH(10,8), M(0xffd93b,{roughness:.6}), 0,.25,0, 0,0,0, .4,.32,.5));
+      dk.add(mesh(SPH(10,8), M(0xffd93b,{roughness:.6}), 0,.55,-.35, 0,0,0, .22,.22,.24));
+      dk.add(mesh(CONE(8), M(0xff9a3d,{roughness:.6}), 0,.52,-.58, -Math.PI/2,0,0, .08,.18,.08));
+      fx.ducks.push({g:dk,t:rand(0,9),cz:-LEN*.55}); biome.duck++;
+    }
+  }
+  return {grp, fx, biome};
 }
 
 /* chispas / motas flotantes (Points reciclados, baratos) */
@@ -1068,6 +1153,37 @@ function updateFx(fx, dt, t){
     }
     pos.needsUpdate=true;
   }
+  if(fx.ash){ // ceniza que CAE despacio
+    const pos=fx.ash.pts.geometry.attributes.position;
+    for(let i=0;i<fx.ash.count;i++){
+      let y=pos.getY(i)-dt*(1+(i%3)*.5);
+      if(y<0) y=fx.ash.cy;
+      pos.setY(i,y);
+      pos.setX(i, pos.getX(i)+Math.sin(t*.7+i)*dt*.4);
+    }
+    pos.needsUpdate=true;
+  }
+  for(const s of fx.smoke||[]){ // humo del cráter en bucle
+    s.t+=dt*.25; if(s.t>1) s.t=0;
+    s.sp.position.y=38+s.t*14; s.sp.position.x+=Math.sin(t+s.t*9)*dt*.6;
+    const sc=4+s.t*5; s.sp.scale.set(sc,sc,1); s.sp.material.opacity=.5*(1-s.t);
+  }
+  if(fx.falls) fx.falls.opacity=.7+Math.sin(t*4)*.12; // cascada
+  if(fx.lake) fx.lake.opacity=.82+Math.sin(t*2)*.06;
+  for(const f of fx.fish||[]){ // peces que saltan en arco
+    f.t+=dt; const ph=(f.t%3)/3, y=Math.sin(ph*Math.PI)*2.2+.2;
+    f.g.position.y=y; f.g.rotation.x=ph<.5?-.6:.6; f.g.rotation.y+=dt*.5;
+  }
+  for(const d of fx.ducks||[]){ // patos en círculo con balanceo
+    d.t+=dt*.35;
+    d.g.position.set(-24+Math.cos(d.t)*7,.15+Math.sin(t*2+d.t)*.08,d.cz+Math.sin(d.t)*6);
+    d.g.rotation.y=-d.t;
+  }
+  for(const gy of fx.geysers||[]){ // géiseres periódicos
+    gy.t+=dt; const c=(gy.t%6)/6, jet=gy.jet;
+    const h=c<.25?Math.sin(c/ .25*Math.PI):0;
+    jet.scale.set(1,.15+h,1); jet.position.y=.5+2.5*(.15+h);
+  }
 }
 
 export function buildWorld(scene, track){
@@ -1078,7 +1194,8 @@ export function buildWorld(scene, track){
   scene.fog = new THREE.Fog(track.fog, 45, 170);
   // iluminación premium: clave con sombras suaves + relleno frío + contraluz cálida
   scene.add(new THREE.HemisphereLight(0xffffff, track.ground, .85));
-  const sun = new THREE.DirectionalLight(track.id==='volcan'?0xffd9c0:0xffffff, 1.7);
+  const sunTint = {jungla:0xfff3d0, desierto:0xf4f8ff, valle:0xfff6e0, volcan:0xffd9c0};
+  const sun = new THREE.DirectionalLight(sunTint[track.id]||0xffffff, 1.7);
   sun.position.set(18,32,12); sun.castShadow = true;
   sun.shadow.mapSize.set(2048,2048);
   sun.shadow.camera.left=-30; sun.shadow.camera.right=30; sun.shadow.camera.top=30; sun.shadow.camera.bottom=-60;
@@ -1112,7 +1229,7 @@ export function buildWorld(scene, track){
     c.add(mesh(SPH(10,8),M(0xd8ecf7,{roughness:1}),0,-.5,0,0,0,0,2.0,1.0,1.4));
     scene.add(c); clouds.push(c);
   }
-  const {fx} = themeProps(scene, track, LEN);
+  const {fx, biome} = themeProps(scene, track, LEN);
   // meta: arco con banderas ondeantes + focos
   const meta=new THREE.Group(); meta.position.set(0,0,-LEN); scene.add(meta);
   meta.userData.flags=[];
@@ -1135,7 +1252,7 @@ export function buildWorld(scene, track){
   meta.add(mesh(new THREE.PlaneGeometry(10,1.6), new THREE.MeshBasicMaterial({map:tex}), 0,4.6,0, 0,0,0, 1,1,1));
   dust = makeDust(scene);
   starBursts = makeBursts(scene);
-  return { LEN, clouds, meta, fx, sky };
+  return { LEN, clouds, meta, fx, sky, biome };
 }
 
 export function spawnEntities(scene, LEN){
@@ -1789,4 +1906,4 @@ function wireUI(){
 wireUI();
 
 // gancho para pruebas automatizadas
-window.__DINO_RACE__ = { DINOS, TRACKS, DINO_BUILDERS, buildDinosaur, buildKart, buildWorld, spawnEntities, Input, state, music, dinoRoar, animDino, getEnts:()=>ents, getCamera:()=>camera, getPlayer:()=>player, THREE };
+window.__DINO_RACE__ = { DINOS, TRACKS, DINO_BUILDERS, buildDinosaur, buildKart, buildWorld, spawnEntities, Input, state, music, dinoRoar, animDino, getEnts:()=>ents, getWorld:()=>world, getCamera:()=>camera, getPlayer:()=>player, THREE };
