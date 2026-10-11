@@ -1466,11 +1466,15 @@ function clearScene(){
   player=null; rivals=[]; world=null; ents=null; confetti=null;
 }
 
-function makePlayer(dinoId, colorIdx){
+function makePlayer(dinoId, colorIdx, simple=false){
   const kart = buildKart(colorIdx, dinoId==='tiburon');
   const {group, parts, def} = buildDinosaur(dinoId);
   mountDinoOnKart(group, kart.group, dinoId);
   kart.group.traverse(o=>{ if(o.isMesh){o.castShadow=true;} });
+  if(simple) kart.group.traverse(o=>{ // rivales simplificados: sin contornos ni sombras
+    if(o.isMesh){ o.castShadow=false; }
+    if(o.userData&&o.userData.isOutline) o.visible=false;
+  });
   return { rig:kart.group, kart, dino:group, parts, def };
 }
 
@@ -1484,14 +1488,19 @@ function startRace(){
   player = makePlayer(state.dinoId, di);
   scene.add(player.rig);
   rivals = [];
-  for(let i=0;i<2;i++){
-    const other = DINOS[(di+3+i*2)%DINOS.length];
-    const r = makePlayer(other.id, (di+4+i)%8);
-    r.rig.position.set(i===0?-3.4:3.4, 0, 4-i*4);
+  // 4 rivales con dinos distintos (incluido el tiburón), algo más lentos que el jugador
+  const pool = DINOS.filter(d=>d.id!==state.dinoId);
+  const picks = [];
+  const tib = pool.find(d=>d.id==='tiburon');
+  if(tib) picks.push(tib);
+  for(const d of pool){ if(picks.length>=4) break; if(!picks.includes(d)) picks.push(d); }
+  picks.forEach((other,i)=>{
+    const r = makePlayer(other.id, (di+2+i*2)%9, true);
+    r.rig.position.set(-4.5+i*3, 0, 6-i*3);
     scene.add(r.rig);
     try{ r.flames=makeFlames(scene,12); }catch{} // menos partículas en rivales
-    rivals.push({ ...r, z:4-i*4, x:i===0?-3.4:3.4, spd:13.5+i*0.9, wob:Math.random()*9 });
-  }
+    rivals.push({ ...r, z:6-i*3, x:-4.5+i*3, spd:14.2+i*0.5, wob:Math.random()*9, spinT:0, spinCd:0 });
+  });
   try{ player.flames=makeFlames(scene,40); }catch{}
   Object.assign(state,{speed:0,x:0,y:0,vy:0,z:10,targetX:0,eggs:0,stars:0,points:0,rowsDone:{},ms50:false,ms90:false,hits:0,time:0,slowT:0,invT:0,spinT:0,finished:false});
   setHUD(true); updateHUD(track);
@@ -1512,6 +1521,11 @@ function updateHUD(track){
   $('hud-track').textContent = `${t.emoji} ${t.name}`;
   $('hud-eggs').textContent = state.eggs;
   $('hud-stars').textContent = state.stars;
+  // posición en carrera con icono grande (más z = más atrás; el jugador compite con 4 rivales)
+  let rank=1;
+  for(const r of rivals){ if(r.z<state.z) rank++; }
+  state.rank=rank;
+  const pe=$('hud-pos'); if(pe) pe.textContent=`${rank}.º`;
   const prog = Math.min(1, Math.max(0,(10-state.z)/world.LEN));
   $('progress-bar').style.width = (prog*100).toFixed(1)+'%';
   $('hud-dist').textContent = `${Math.max(0,(10-state.z)|0)} m / ${world.LEN} m · ⏱️ ${state.time.toFixed(0)}s`;
@@ -1541,8 +1555,9 @@ function finishRace(){
   const score = Math.max(0, 1000 - state.time*2 - state.hits*15 + bonus*10)|0;
   const nstars = state.hits===0&&state.time<90 ? 3 : state.hits<=3 ? 3 : state.hits<=6 ? 2 : 2;
   $('finish-text').textContent = `¡${player.def.name} cruzó la meta! ${player.def.emoji}🎉`;
+  const rank=state.rank||1, medal=['🏆','🥈','🥉','🎖️','🎖️'][Math.min(4,rank-1)];
   $('finish-stats').innerHTML =
-    `<div class="stat">⏱️ ${state.time.toFixed(1)}s</div><div class="stat">🥚 ${state.eggs}</div><div class="stat">⭐ ${state.stars}</div><div class="stat">✨ ${state.points||0} pts</div><div class="stat">🏆 ${score} pts</div>`;
+    `<div class="stat" style="font-size:30px">${medal} ¡${rank}.º!</div><div class="stat">⏱️ ${state.time.toFixed(1)}s</div><div class="stat">🥚 ${state.eggs}</div><div class="stat">⭐ ${state.stars}</div><div class="stat">✨ ${state.points||0} pts</div><div class="stat">🏆 ${score} pts</div>`;
   $('finish-stars').textContent = '⭐'.repeat(nstars);
   domConfetti($('screen-finish'));
   setTimeout(()=>{ show('screen-finish'); }, 1800);
@@ -1735,11 +1750,27 @@ function loop(){
     // rugidos aleatorios mientras conduce (espaciados, nunca molestos)
     state.roarCd=(state.roarCd??12)-dt;
     if(state.roarCd<=0){ dinoRoar(player,.65); state.roarCd=14+Math.random()*12; }
-    // rivales decorativos
+    // rivales con IA sencilla: siguen la trazada, algo más lentos, sin bloquear.
+    // También hacen su giro de choque con obstáculos y entre ellos (solo visual).
     for(const r of rivals){
-      r.z -= r.spd*dt; r.wob+=dt*2;
+      r.z -= r.spd*dt; r.wob+=dt*2; r.spinCd=Math.max(0,(r.spinCd||0)-dt);
       r.x += Math.sin(r.wob)*dt*1.2; r.x=Math.max(-5,Math.min(5,r.x));
       r.rig.position.set(r.x, Math.abs(Math.sin(r.wob*2))*.1, r.z);
+      if(r.spinT>0){
+        r.spinT-=dt;
+        r.rig.rotation.y=(r.spinFrom||0)+(1-Math.max(0,r.spinT)/.7)*Math.PI*2;
+        if(r.spinT<=0){ r.spinT=0; r.rig.rotation.y=0; }
+      } else {
+        r.rig.rotation.y=Math.sin(r.wob)*.1;
+        if(r.spinCd<=0){
+          let bump=false;
+          for(const o of ents.obstacles){
+            if(Math.abs(o.position.z-r.z)<2&&Math.abs(o.position.x-r.x)<1.6){ bump=true; break; }
+          }
+          if(!bump) for(const q of rivals){ if(q!==r&&Math.abs(q.z-r.z)<2.5&&Math.abs(q.x-r.x)<1.6){ bump=true; break; } }
+          if(bump){ r.spinT=.7; r.spinFrom=r.rig.rotation.y; r.spinCd=4; burstAt(r.x,1.6,r.z,8); }
+        }
+      }
       animDino(r, elapsed+r.wob, dt, {speed:r.spd, steer:Math.sin(r.wob)*.3});
       if(r.spd>11&&Math.random()<.3) flameAt(r.flames,r.x,.4,r.z+1.4,1);
       updateFlames(r.flames,dt);
@@ -2007,4 +2038,4 @@ function wireUI(){
 wireUI();
 
 // gancho para pruebas automatizadas
-window.__DINO_RACE__ = { DINOS, TRACKS, DINO_BUILDERS, buildDinosaur, buildKart, buildWorld, spawnEntities, Input, state, music, dinoRoar, animDino, getEnts:()=>ents, getWorld:()=>world, getCamera:()=>camera, getPlayer:()=>player, THREE };
+window.__DINO_RACE__ = { DINOS, TRACKS, DINO_BUILDERS, buildDinosaur, buildKart, buildWorld, spawnEntities, Input, state, music, dinoRoar, animDino, getEnts:()=>ents, getWorld:()=>world, getCamera:()=>camera, getPlayer:()=>player, getRivals:()=>rivals, THREE };
