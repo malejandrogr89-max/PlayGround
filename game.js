@@ -641,19 +641,24 @@ export function mountDinoOnKart(dinoGroup, kartGroup, dinoId){
 }
 
 /* ============ AUDIO: música alegre procedural + SFX ============ */
-/* Voces por especie: tono base amistoso y duración del rugido */
+/* Voces "gruñido grave amistoso": sierra 60-120 Hz + AM 20-40 Hz ("bububu").
+   Grande = más grave, lento y largo. Pequeño = más agudo y rápido. */
 const ROAR_VOICE = {
-  trex:  {f:190, d:1.1, wob:7}, braqui: {f:120, d:1.5, wob:4},
-  trice: {f:220, d:0.9, wob:8}, velo:   {f:540, d:0.55, wob:14},
-  stego: {f:250, d:0.9, wob:6}, anky:   {f:160, d:1.0, wob:5},
-  para:  {f:350, d:1.2, wob:5}, ptera:  {f:680, d:0.65, wob:16},
-  tiburon:{f:300, d:0.9, wob:11},
+  braqui: {f:62,  d:1.6, am:22}, trex:   {f:75,  d:1.3, am:26},
+  anky:   {f:70,  d:1.2, am:24}, trice:  {f:85,  d:1.1, am:28},
+  stego:  {f:90,  d:1.0, am:30}, para:   {f:95,  d:1.1, am:30},
+  velo:   {f:110, d:0.7, am:36}, ptera:  {f:120, d:0.7, am:38},
+  tiburon:{f:140, d:0.8, am:30},
 };
 class MusicBox {
   constructor(){
     this.ctx=null; this.playing=false; this.muted=false; this.timer=null; this.step=0;
-    this.musicGain=null; this.sfxGain=null;
-    this.musicVol=+(localStorage.getItem('dr3d_mus')??.7); this.sfxVol=+(localStorage.getItem('dr3d_sfx')??.9);
+    this.musicGain=null; this.sfxGain=null; this._roarUntil=0; this._noise=null;
+    // valores razonables aunque lo guardado sea 0 (el silencio total va por el botón 🔇)
+    let sm=NaN, ss=NaN;
+    try{ sm=parseFloat(localStorage.getItem('dr3d_mus')); ss=parseFloat(localStorage.getItem('dr3d_sfx')); }catch{}
+    this.musicVol=(!isFinite(sm)||sm<=0)?.5:Math.min(1,sm);
+    this.sfxVol=(!isFinite(ss)||ss<=0)?.8:Math.min(1,ss);
   }
   ensure(){
     if(!this.ctx){
@@ -669,9 +674,15 @@ class MusicBox {
       this._pbuf=new Float32Array(this.probe.fftSize);
       this.musicGain.connect(this.master); this.sfxGain.connect(this.master);
       this.master.connect(this.comp); this.comp.connect(this.probe); this.probe.connect(this.ctx.destination);
-      // el audio solo vive tras gesto del usuario: reanudar en cada gesto
+      // ruido blanco reutilizable para la capa de gruñido
+      const nb=this.ctx.createBuffer(1,this.ctx.sampleRate,this.ctx.sampleRate);
+      const nd=nb.getChannelData(0);
+      for(let i=0;i<nd.length;i++) nd[i]=Math.random()*2-1;
+      this._noise=nb;
+      // el audio solo vive tras gesto del usuario: reanudar en cada gesto y al volver a la pestaña
       const wake=()=>{ if(this.ctx&&this.ctx.state==='suspended') this.ctx.resume(); };
       addEventListener('pointerdown',wake); addEventListener('keydown',wake);
+      document.addEventListener('visibilitychange',()=>{ if(!document.hidden) wake(); });
     }
     if(this.ctx&&this.ctx.state==='suspended') this.ctx.resume();
   }
@@ -700,38 +711,46 @@ class MusicBox {
   fanfare(){ [523,659,784,1047,784,1047,1319].forEach((f,i)=>this.beep(f,.22,'square',.13,i*.14)); }
   click(){ this.beep(600,.07,'square',.1); }
   count(n){ this.beep(n===0?880:440,.25,'square',.16); }
-  /* Rugido amistoso y PRESENTE: voz grave + octava alegre + colita "¡yip!" */
-  roar(species='trex', vol=.75){
+  /* GRUÑIDO GRAVE AMISTOSO: sierra 60-120 Hz + AM 20-40 Hz + ruido filtrado +
+     paso bajo "boca" que se abre y cierra + descenso final. Nada fuerte >1 kHz. */
+  roar(species='trex', vol=.8){
     if(!this.ctx||this.muted) return 0;
-    if(this.ctx.state!=='running'){ this.ctx.resume(); }
+    if(this.ctx.state!=='running'){ this.ctx.resume(); return 0; }
+    if(species==='tiburon'){ this.bubbles(6,.35); this._roarUntil=this.ctx.currentTime+.9; return .9; }
+    const now=this.ctx.currentTime;
+    if(now<(this._roarUntil||0)) return 0; // sin solaparse
     const v = ROAR_VOICE[species]||ROAR_VOICE.trex;
-    const t0 = this.ctx.currentTime, dur = v.d;
-    const o=this.ctx.createOscillator(), g=this.ctx.createGain(), l=this.ctx.createOscillator(), lg=this.ctx.createGain();
-    o.type='triangle';
-    o.frequency.setValueAtTime(v.f*1.3, t0);
-    o.frequency.exponentialRampToValueAtTime(v.f*0.8, t0+dur*.45);
-    o.frequency.exponentialRampToValueAtTime(v.f*1.1, t0+dur);
-    l.type='sine'; l.frequency.value=v.wob; lg.gain.value=v.f*.22;
-    l.connect(lg); lg.connect(o.frequency);
-    g.gain.setValueAtTime(0.001,t0);
-    g.gain.exponentialRampToValueAtTime(vol,t0+.06);
-    g.gain.setValueAtTime(vol,t0+dur*.7);
-    g.gain.exponentialRampToValueAtTime(.001,t0+dur);
-    o.connect(g); g.connect(this.sfxGain); o.start(t0); o.stop(t0+dur+.05); l.start(t0); l.stop(t0+dur+.05);
-    const o2=this.ctx.createOscillator(), g2=this.ctx.createGain();
-    o2.type='sine'; o2.frequency.setValueAtTime(v.f*2.1,t0);
-    o2.frequency.exponentialRampToValueAtTime(v.f*1.8,t0+dur);
-    g2.gain.setValueAtTime(.001,t0); g2.gain.exponentialRampToValueAtTime(vol*.45,t0+.08);
-    g2.gain.exponentialRampToValueAtTime(.001,t0+dur);
-    o2.connect(g2); g2.connect(this.sfxGain); o2.start(t0); o2.stop(t0+dur+.05);
-    // colita alegre ascendente (asegura que el rugido "se oye" simpático)
-    const o3=this.ctx.createOscillator(), g3=this.ctx.createGain();
-    o3.type='triangle'; o3.frequency.setValueAtTime(v.f*1.5,t0+dur*.55);
-    o3.frequency.exponentialRampToValueAtTime(v.f*2.6,t0+dur+.28);
-    g3.gain.setValueAtTime(.001,t0+dur*.55); g3.gain.exponentialRampToValueAtTime(vol*.4,t0+dur*.7);
-    g3.gain.exponentialRampToValueAtTime(.001,t0+dur+.3);
-    o3.connect(g3); g3.connect(this.sfxGain); o3.start(t0+dur*.55); o3.stop(t0+dur+.35);
-    return dur+.3;
+    const jit = 1+(Math.random()*.1-.05); // variación ±5 %
+    const f0 = v.f*jit, dur = v.d*(1+(Math.random()*.1-.05));
+    this._roarUntil = now+dur;
+    const t0=now+.02;
+    const o=this.ctx.createOscillator(); o.type='sawtooth';
+    o.frequency.setValueAtTime(f0*1.08,t0);
+    o.frequency.exponentialRampToValueAtTime(f0,t0+dur*.3);
+    o.frequency.exponentialRampToValueAtTime(f0*.82,t0+dur); // descenso suave
+    const am=this.ctx.createOscillator(); am.type='sine';
+    am.frequency.value=v.am*(1+(Math.random()*.1-.05)); // "bububu"
+    const amG=this.ctx.createGain(); amG.gain.value=.45;
+    const g=this.ctx.createGain(); g.gain.value=.5;
+    am.connect(amG); amG.connect(g.gain);
+    const lp=this.ctx.createBiquadFilter(); lp.type='lowpass'; lp.Q.value=2;
+    lp.frequency.setValueAtTime(260,t0);
+    lp.frequency.exponentialRampToValueAtTime(Math.min(650,v.f*6),t0+dur*.35); // la boca se abre
+    lp.frequency.exponentialRampToValueAtTime(220,t0+dur); // ...y se cierra
+    const lp2=this.ctx.createBiquadFilter(); lp2.type='lowpass'; lp2.frequency.value=700; // techo extra: nada fuerte >1 kHz
+    const out=this.ctx.createGain();
+    out.gain.setValueAtTime(.001,t0);
+    out.gain.exponentialRampToValueAtTime(vol,t0+.08);
+    out.gain.setValueAtTime(vol,t0+dur*.75);
+    out.gain.exponentialRampToValueAtTime(.001,t0+dur);
+    o.connect(g); g.connect(lp); lp.connect(lp2); lp2.connect(out); out.connect(this.sfxGain);
+    const n=this.ctx.createBufferSource(); n.buffer=this._noise; n.loop=true;
+    const nf=this.ctx.createBiquadFilter(); nf.type='lowpass'; nf.frequency.value=380; nf.Q.value=1;
+    const ng=this.ctx.createGain(); ng.gain.value=.12;
+    n.connect(nf); nf.connect(ng); ng.connect(out);
+    o.start(t0); o.stop(t0+dur+.05); am.start(t0); am.stop(t0+dur+.05);
+    n.start(t0); n.stop(t0+dur+.05);
+    return dur;
   }
   /* burbujitas de tiburón: glissandos cortos ascendentes */
   bubbles(n=4, vol=.3){
@@ -1425,12 +1444,11 @@ function animDino(p, t, dt, extra={}){
   if(p.kart.steering) p.kart.steering.rotation.z = steer*.7;
   if(p.rig&&p.rig.userData.chassis) p.rig.userData.chassis.position.y = .42 + Math.sin(t*22)*.008*Math.min(1,spd/14) - sq*.05;
 }
-// dispara un rugido con sincronización de mandíbula (devuelve duración)
-function dinoRoar(p, vol=.75){
+// dispara un rugido con sincronización de mandíbula (devuelve duración real)
+function dinoRoar(p, vol=.8){
   if(!p||!p.parts) return 0;
   const sp=(p.def&&p.def.id)||'trex';
   const dur = music.roar(sp, vol);
-  if(sp==='tiburon') music.bubbles(5,.32);
   if(dur>0) p.parts._roarT = dur;
   return dur;
 }
